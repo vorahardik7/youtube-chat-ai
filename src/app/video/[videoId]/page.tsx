@@ -5,8 +5,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { ArrowLeft, Send, MessageSquare, Clock, AlertTriangle } from 'lucide-react';
-import { ChatMessage, ChatMessageSkeleton } from '@/app/components/ChatMessage'; 
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ChatMessageSkeleton } from '@/app/components/ChatMessage';
+import { ChatWindow } from '@/app/components/ChatWindow';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
 
 interface Message {
@@ -39,23 +40,12 @@ export default function VideoPage() {
     const videoId = Array.isArray(params.videoId) ? params.videoId[0] : params.videoId;
 
     const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState('');
     const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [videoDetails, setVideoDetails] = useState<VideoDetails | null>(null);
     const [player, setPlayer] = useState<YouTubePlayer | null>(null);
     const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const chatContainerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (messagesEndRef.current) {
-            requestAnimationFrame(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            });
-        }
-    }, [messages]);
 
     useEffect(() => {
         if (!videoId) {
@@ -184,24 +174,21 @@ export default function VideoPage() {
         setError(message);
     }, []);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmedMessage = newMessage.trim();
-        if (!trimmedMessage || !videoDetails) return; 
+    const handleSendMessage = async (message: string) => {
+        if (!message || !videoDetails) return; 
 
         const messageTimestamp = currentTimestamp;
 
         const userMsg: Message = {
             id: Date.now(),
             user: 'You',
-            text: trimmedMessage,
+            text: message,
             timestamp: messageTimestamp,
             isAi: false,
         };
 
         // Update UI with user message
         setMessages(prev => [...prev, userMsg]);
-        setNewMessage('');
         setIsAiThinking(true);
 
         // Create a thinking message placeholder
@@ -241,7 +228,7 @@ export default function VideoPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userMessage: trimmedMessage,
+                    userMessage: message,
                     chatHistory,
                     videoDetails: {
                         title: videoDetails.title,
@@ -292,7 +279,7 @@ export default function VideoPage() {
         }
     };
 
-     const handleTimestampClick = (timeString: string) => {
+    const handleTimestampClick = (timeString: string) => {
         if (!player || typeof player.seekTo !== 'function') {
             console.warn("Player not available to seek.");
             return;
@@ -312,43 +299,7 @@ export default function VideoPage() {
         } else {
             console.warn("Could not parse timestamp:", timeString);
         }
-     };
-
-    const renderMessageText = (text: string) => {
-        const timestampRegex = /(\[(\d{1,2}:\d{2})\])/g;
-        const parts = text.split(timestampRegex);
-
-        const elements: React.ReactNode[] = [];
-        let lastIndex = 0;
-        text.replace(timestampRegex, (match, fullMatch, time, offset) => {
-            if (offset > lastIndex) {
-                elements.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex, offset)}</span>);
-            }
-            elements.push(
-                <button
-                    key={`ts-${offset}`}
-                    onClick={() => handleTimestampClick(time)}
-                    className="text-blue-600 hover:text-blue-800 underline font-medium mx-0.5 px-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    title={`Jump to ${time} in video`}
-                >
-                    {fullMatch} 
-                </button>
-            );
-            lastIndex = offset + match.length;
-            return match; 
-        });
-
-        if (lastIndex < text.length) {
-            elements.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex)}</span>);
-        }
-
-        if (elements.length === 0) {
-            return <span>{text}</span>;
-        }
-
-        return elements; 
     };
-
 
     const playerOpts: YouTubeProps['opts'] = {
         height: '100%',
@@ -378,7 +329,7 @@ export default function VideoPage() {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-3.5rem)] overflow-hidden">
                 {/* Video Column */}
                 <div className="bg-slate-50 p-4 flex flex-col overflow-y-auto">
                     {/* YouTube Player Container */}
@@ -443,105 +394,19 @@ export default function VideoPage() {
                     </div>
                 </div>
 
-                {/* Chat Column */}
-                <div className="border-l border-slate-200 flex flex-col h-full max-h-[calc(100vh-3.5rem)] lg:max-h-full overflow-hidden">
-                    {/* Chat Header */}
-                    <div className="p-4 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
-                        <div>
-                            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                                <MessageSquare size={18} className="text-teal-600" />
-                                <span>AI Chat Assistant</span>
-                            </h2>
-                            <p className="text-sm text-slate-500 mt-1">Ask about the video, mention timestamps like [MM:SS]</p>
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full">
-                            <Clock size={12} />
-                            <span>{player ? formatTime(currentTimestamp) : '--:--'}</span>
-                        </div>
-                    </div>
-
-                    {/* Messages Area */}
-                    <div 
-                        ref={chatContainerRef} 
-                        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white scrollbar-thin"
-                    >
-                         {isLoading && messages.length === 0 && (
-                            <div className="px-2">
-                                <ChatMessageSkeleton />
-                            </div>
-                         )}
-                         
-                         {!isLoading && messages.length === 0 && !error && (
-                             <div className="flex flex-col items-center justify-center h-full text-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                                    <MessageSquare size={20} className="text-slate-400" />
-                                </div>
-                                <p className="text-slate-500 text-sm">Start the conversation by asking a question!</p>
-                             </div>
-                         )}
-                         
-                         {!isLoading && error && messages.length === 0 && !videoDetails && (
-                             <div className="flex flex-col items-center justify-center h-full text-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                                    <AlertTriangle size={20} className="text-red-400" />
-                                </div>
-                                <p className="text-red-600 text-sm">Could not initialize chat</p>
-                                <p className="text-xs text-slate-500 mt-1">{error}</p>
-                             </div>
-                         )}
-                         
-                         {messages.map(message => (
-                            <ChatMessage
-                                key={message.id}
-                                user={message.user}
-                                timestamp={formatTime(message.timestamp)}
-                                isAi={message.isAi}
-                            >
-                                {renderMessageText(message.text)}
-                            </ChatMessage>
-                         ))}
-                        <div ref={messagesEndRef} className="h-1"/> {/* Scroll anchor */}
-                    </div>
-
-                    {/* Message Input Area */}
-                    <div className="p-4 border-t border-slate-200 bg-white flex-shrink-0">
-                        <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
-                            <div className="relative flex-1">
-                                <input
-                                    type="text"
-                                    placeholder={isAiThinking ? "AI is generating a response..." : "Ask a question about the video..."}
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    disabled={isLoading || !player || isAiThinking} // Disable during AI thinking
-                                    className="w-full rounded-md border border-slate-300 px-4 py-2.5 pr-10 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
-                                    aria-label="Chat message input"
-                                />
-                                {/* Insert Timestamp Button */}
-                                <button
-                                    type="button"
-                                    title="Insert Current Timestamp"
-                                    onClick={() => setNewMessage(prev => `${prev} [${formatTime(currentTimestamp)}]`)}
-                                    disabled={isLoading || !player || isAiThinking}
-                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
-                                    aria-label="Insert current video time"
-                                >
-                                    <Clock size={16} />
-                                </button>
-                            </div>
-                            <motion.button
-                                type="submit"
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
-                                disabled={!newMessage.trim() || isLoading || !player || isAiThinking}
-                                className="inline-flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                                aria-label="Send message"
-                            >
-                                <Send size={16} />
-                                <span className="hidden sm:inline">{isAiThinking ? "Thinking..." : "Send"}</span>
-                            </motion.button>
-                        </form>
-                    </div>
-                </div>
+                {/* Chat Column - Now using the ChatWindow component */}
+                <ChatWindow 
+                    messages={messages}
+                    isLoading={isLoading}
+                    error={error}
+                    videoDetails={videoDetails}
+                    playerReady={!!player}
+                    currentTimestamp={currentTimestamp}
+                    isAiThinking={isAiThinking}
+                    onSendMessage={handleSendMessage}
+                    onTimestampClick={handleTimestampClick}
+                    formatTime={formatTime}
+                />
             </div>
         </div>
     );

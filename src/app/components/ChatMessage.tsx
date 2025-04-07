@@ -54,7 +54,7 @@ export function ChatMessage({ user, children, timestamp, isAi }: ChatMessageProp
             }`}
           >
             {/* Render children passed from VideoPage */}
-            <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+            <div className={`text-sm break-words leading-relaxed prose-sm max-w-none ${isAi ? 'prose-headings:text-teal-800 prose-strong:text-slate-900 prose-li:my-0 prose-p:my-1' : 'prose-headings:text-white prose-strong:text-white/90 prose-li:text-white/90'}`}>
                {children}
             </div>
           </div>

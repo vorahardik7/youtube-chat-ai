@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/genai": "^0.7.0",
     "@types/youtube": "^0.1.0",
     "axios": "^1.8.4",
     "lucide-react": "^0.487.0",

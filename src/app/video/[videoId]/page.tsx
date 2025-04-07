@@ -45,6 +45,7 @@ export default function VideoPage() {
     const [error, setError] = useState<string | null>(null);
     const [videoDetails, setVideoDetails] = useState<VideoDetails | null>(null);
     const [player, setPlayer] = useState<YouTubePlayer | null>(null);
+    const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -100,9 +101,16 @@ export default function VideoPage() {
                 setVideoDetails(details);
                 setMessages([
                     {
+                        id: Date.now() - 1, // Initial user message
+                        user: 'You',
+                        text: `Tell me about "${details.title}"`,
+                        timestamp: 0,
+                        isAi: false,
+                    },
+                    {
                         id: Date.now(),
                         user: 'AI Assistant',
-                        text: `Hello! I've analyzed the video "${details.title}" by ${details.channelTitle}. Feel free to ask me any questions about the content. You can mention timestamps like [MM:SS] to reference specific parts.`, // Updated initial message
+                        text: `Hello! I've analyzed the video "${details.title}" by ${details.channelTitle}. Feel free to ask me any questions about the content. You can mention timestamps like [MM:SS] to reference specific parts.`,
                         timestamp: 0,
                         isAi: true,
                     },
@@ -176,10 +184,10 @@ export default function VideoPage() {
         setError(message);
     }, []);
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedMessage = newMessage.trim();
-        if (!trimmedMessage) return; 
+        if (!trimmedMessage || !videoDetails) return; 
 
         const messageTimestamp = currentTimestamp;
 
@@ -191,19 +199,97 @@ export default function VideoPage() {
             isAi: false,
         };
 
+        // Update UI with user message
         setMessages(prev => [...prev, userMsg]);
-        setNewMessage(''); 
+        setNewMessage('');
+        setIsAiThinking(true);
 
-        setTimeout(() => {
-            const aiResponse: Message = {
-                id: Date.now() + 1, 
-                user: 'AI Assistant',
-                text: `Thinking about "[${formatTime(messageTimestamp)}]"... Regarding your question "${trimmedMessage}", the main point seems to be... (AI response goes here)`,
-                timestamp: messageTimestamp,
-                isAi: true,
-            };
-            setMessages(prev => [...prev, aiResponse]);
-        }, 1500);
+        // Create a thinking message placeholder
+        const thinkingId = Date.now() + 1;
+        const thinkingMessage: Message = {
+            id: thinkingId,
+            user: 'AI Assistant',
+            text: `Thinking about your question at [${formatTime(messageTimestamp)}]...`,
+            timestamp: messageTimestamp,
+            isAi: true,
+        };
+        
+        setMessages(prev => [...prev, thinkingMessage]);
+
+        try {
+            // Prepare chat history in the format expected by the API
+            const chatHistory = messages
+                .filter(msg => !msg.text.includes('Thinking about your question')) // Filter out thinking messages
+                .map(msg => ({
+                    role: msg.isAi ? 'model' : 'user',
+                    parts: [{ text: msg.text }]
+                }));
+            
+            // Ensure history starts with a user turn if it starts with a model message
+            if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
+                // Add a dummy user message before the first model message
+                chatHistory.unshift({
+                    role: 'user',
+                    parts: [{ text: 'Tell me about this video.' }]
+                });
+            }
+
+            // Call the chat API
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userMessage: trimmedMessage,
+                    chatHistory,
+                    videoDetails: {
+                        title: videoDetails.title,
+                        description: videoDetails.description,
+                    },
+                    videoId,
+                    timestamp: messageTimestamp,
+                }),
+            });
+
+            if (!response.ok) {
+                let errorText = `Error: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorText = errorData.message || errorText;
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
+                }
+                throw new Error(errorText);
+            }
+
+            const data = await response.json();
+            
+            // Replace thinking message with actual response
+            setMessages(prev => prev.map(msg => 
+                msg.id === thinkingId 
+                    ? {
+                        ...msg,
+                        text: data.aiMessage,
+                      }
+                    : msg
+            ));
+            
+        } catch (error) {
+            console.error('Error calling chat API:', error);
+            
+            // Replace thinking message with error
+            setMessages(prev => prev.map(msg => 
+                msg.id === thinkingId 
+                    ? {
+                        ...msg,
+                        text: `Sorry, I couldn't process your request. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`,
+                      }
+                    : msg
+            ));
+        } finally {
+            setIsAiThinking(false);
+        }
     };
 
      const handleTimestampClick = (timeString: string) => {
@@ -423,10 +509,10 @@ export default function VideoPage() {
                             <div className="relative flex-1">
                                 <input
                                     type="text"
-                                    placeholder="Ask a question about the video..."
+                                    placeholder={isAiThinking ? "AI is generating a response..." : "Ask a question about the video..."}
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    disabled={isLoading || !player} // Disable if loading or player not ready
+                                    disabled={isLoading || !player || isAiThinking} // Disable during AI thinking
                                     className="w-full rounded-md border border-slate-300 px-4 py-2.5 pr-10 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
                                     aria-label="Chat message input"
                                 />
@@ -435,7 +521,7 @@ export default function VideoPage() {
                                     type="button"
                                     title="Insert Current Timestamp"
                                     onClick={() => setNewMessage(prev => `${prev} [${formatTime(currentTimestamp)}]`)}
-                                    disabled={isLoading || !player}
+                                    disabled={isLoading || !player || isAiThinking}
                                     className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
                                     aria-label="Insert current video time"
                                 >
@@ -446,12 +532,12 @@ export default function VideoPage() {
                                 type="submit"
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
-                                disabled={!newMessage.trim() || isLoading || !player}
+                                disabled={!newMessage.trim() || isLoading || !player || isAiThinking}
                                 className="inline-flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                 aria-label="Send message"
                             >
                                 <Send size={16} />
-                                <span className="hidden sm:inline">Send</span>
+                                <span className="hidden sm:inline">{isAiThinking ? "Thinking..." : "Send"}</span>
                             </motion.button>
                         </form>
                     </div>

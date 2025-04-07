@@ -1,103 +1,119 @@
-import Image from "next/image";
+// FILE: src/app/page.tsx
+'use client'; 
 
-export default function Home() {
+import { useState } from 'react';
+import { useRouter } from 'next/navigation'; 
+import { motion } from 'motion/react'; 
+import { MessageSquare, Search, ArrowRight } from 'lucide-react';
+import { NavBar } from '@/app/components/NavBar'; 
+
+export default function HomePage() {
+  const [videoUrl, setVideoUrl] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter(); 
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); 
+
+    const videoId = extractVideoId(videoUrl);
+    if (videoId) {
+      router.push(`/video/${videoId}`);
+    } else {
+      setError('Please enter a valid YouTube URL');
+    }
+  };
+
+  const extractVideoId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
+      <NavBar /> 
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="container mx-auto px-4 pt-20 md:pt-28 pb-16 max-w-screen-md">
+
+        <div className="text-center mb-10">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center shadow-sm mr-3">
+              <MessageSquare size={24} className="text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-800">
+              Youtube AI
+            </h1>
+          </div>
+          <p className="text-lg text-slate-600">
+            Watch YouTube videos and chat with an AI about the content
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="video-url" className="block text-sm font-medium text-slate-700 mb-2">
+                Enter YouTube Video URL
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                  <Search className="h-5 w-5" />
+                </div>
+                <input
+                  id="video-url"
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 pl-10 py-2.5 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  required // HTML5 required validation
+                  aria-label="YouTube Video URL Input"
+                />
+              </div>
+              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            </div>
+
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-150"
+              aria-label="Watch and Chat about the video"
+            >
+              Watch and Chat
+              <ArrowRight size={16} />
+            </motion.button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">
+              How it works:
+            </h3>
+            <ol className="list-decimal pl-5 text-sm text-slate-600 space-y-2">
+              <li>Paste any YouTube video URL in the field above.</li>
+              <li>Click "Watch and Chat" to load the video and chat interface.</li>
+              <li>Our AI analyzes the video content and captions.</li>
+              <li>Ask questions and get contextual answers about the video.</li>
+              <li>Reference specific times using [MM:SS] format.</li>
+            </ol>
+          </div>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-xs text-center text-slate-500 mt-8"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          © 2024 VideoChat AI. All rights reserved.
+        </motion.p>
+      </div>
     </div>
   );
 }

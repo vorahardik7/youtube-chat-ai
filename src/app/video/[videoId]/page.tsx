@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { ChatWindow } from '@/app/components/ChatWindow';
+import { NavBar } from '@/app/components/NavBar';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
 import { formatTime } from '@/utils/formatters';
 
@@ -15,6 +16,7 @@ interface Message {
     text: string; 
     timestamp: number; 
     isAi: boolean;
+    isStreaming?: boolean;
 }
 
 interface VideoDetails {
@@ -182,22 +184,23 @@ export default function VideoPage() {
         setMessages(prev => [...prev, userMsg]);
         setIsAiThinking(true);
 
-        // Create a thinking message placeholder
-        const thinkingId = Date.now() + 1;
-        const thinkingMessage: Message = {
-            id: thinkingId,
+        // Create a streaming message placeholder
+        const aiMessageId = Date.now() + 1;
+        const streamingMessage: Message = {
+            id: aiMessageId,
             user: 'AI Assistant',
-            text: `Thinking about your question at [${formatTime(messageTimestamp)}]...`,
+            text: '',  // Start empty and will be filled as we receive chunks
             timestamp: messageTimestamp,
             isAi: true,
+            isStreaming: true, // Mark as streaming for UI indicator
         };
         
-        setMessages(prev => [...prev, thinkingMessage]);
+        setMessages(prev => [...prev, streamingMessage]);
 
         try {
             // Prepare chat history in the format expected by the API
             const chatHistory = messages
-                .filter(msg => !msg.text.includes('Thinking about your question')) // Filter out thinking messages
+                .filter(msg => !msg.text.includes('Thinking about your question') && !msg.isStreaming) // Filter out thinking/streaming messages
                 .map(msg => ({
                     role: msg.isAi ? 'model' : 'user',
                     parts: [{ text: msg.text }]
@@ -212,7 +215,7 @@ export default function VideoPage() {
                 });
             }
 
-            // Call the chat API
+            // Call the chat API with streaming enabled
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -241,27 +244,89 @@ export default function VideoPage() {
                 throw new Error(errorText);
             }
 
-            const data = await response.json();
+            if (!response.body) {
+                throw new Error('Response body is not readable');
+            }
+
+            // Process the streaming response
+            const reader = response.body.getReader();
+            let accumulatedText = '';
             
-            // Replace thinking message with actual response
-            setMessages(prev => prev.map(msg => 
-                msg.id === thinkingId 
-                    ? {
-                        ...msg,
-                        text: data.aiMessage,
-                      }
-                    : msg
-            ));
+            // Read the stream chunks
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                    break;
+                }
+                
+                // Convert the chunk to text
+                const chunkText = new TextDecoder().decode(value);
+                
+                try {
+                    // The response might contain multiple JSON objects, so we need to handle that
+                    const jsonChunks = chunkText.split('\n').filter(Boolean);
+                    
+                    for (const jsonChunk of jsonChunks) {
+                        const parsedChunk = JSON.parse(jsonChunk);
+                        
+                        if (parsedChunk.error) {
+                            throw new Error(parsedChunk.error);
+                        }
+                        
+                        if (parsedChunk.chunk) {
+                            // Append the new text to our accumulated text
+                            accumulatedText += parsedChunk.chunk;
+                            
+                            // Update the message with the accumulated text so far
+                            setMessages(prev => 
+                                prev.map(msg => 
+                                    msg.id === aiMessageId 
+                                        ? {
+                                            ...msg,
+                                            text: accumulatedText,
+                                          }
+                                        : msg
+                                )
+                            );
+                        }
+                        
+                        // If this is the last chunk, finalize the message
+                        if (parsedChunk.done) {
+                            // Use the full response if provided
+                            if (parsedChunk.fullResponse) {
+                                accumulatedText = parsedChunk.fullResponse;
+                            }
+                            
+                            // Update the message one last time and remove the streaming flag
+                            setMessages(prev => 
+                                prev.map(msg => 
+                                    msg.id === aiMessageId 
+                                        ? {
+                                            ...msg,
+                                            text: accumulatedText,
+                                            isStreaming: false,
+                                          }
+                                        : msg
+                                )
+                            );
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing stream chunk:', e, chunkText);
+                }
+            }
             
         } catch (error) {
             console.error('Error calling chat API:', error);
             
-            // Replace thinking message with error
+            // Replace streaming message with error
             setMessages(prev => prev.map(msg => 
-                msg.id === thinkingId 
+                msg.id === aiMessageId 
                     ? {
                         ...msg,
                         text: `Sorry, I couldn't process your request. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`,
+                        isStreaming: false,
                       }
                     : msg
             ));
@@ -315,7 +380,9 @@ export default function VideoPage() {
                     <h1 className="text-base md:text-lg font-semibold text-slate-800 truncate px-2 text-center flex-1 mx-4" title={videoDetails?.title}>
                         {isLoading && !error ? "Loading Video..." : videoDetails?.title || "Video Chat"}
                     </h1>
-                    <div className="w-16 md:w-24 flex-shrink-0"></div>
+                    <div className="flex-shrink-0">
+                        <NavBar simplified={true} className="shadow-none" />
+                    </div>
                 </div>
             </div>
 

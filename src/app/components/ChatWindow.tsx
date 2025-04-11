@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageSquare, AlertTriangle, Clock, Send } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
+import { LoadingSpinner } from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -13,6 +14,7 @@ interface Message {
   text: string;
   timestamp: number;
   isAi: boolean;
+  isStreaming?: boolean;
 }
 
 interface ChatWindowProps {
@@ -42,9 +44,9 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const [newMessage, setNewMessage] = React.useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -58,12 +60,12 @@ export function ChatWindow({
     
     onSendMessage(trimmedMessage);
     setNewMessage('');
+    setIsTyping(true);
   };
 
   const renderMessageText = (text: string) => {
     if (!text) return <span></span>;
     
-    // Check if the text is JSON
     try {
       const jsonObject = JSON.parse(text);
       return (
@@ -72,10 +74,8 @@ export function ChatWindow({
         </pre>
       );
     } catch (e) {
-      // Not JSON, continue with regular text processing
     }
     
-    // Process timestamps to make them clickable
     const timestampRegex = /\[(\d{1,2}:\d{2})\]/g;
     
     // Split the text by timestamps but keep the timestamps as parts
@@ -248,7 +248,17 @@ export function ChatWindow({
               user={message.user}
               isAi={message.isAi}
             >
-              {renderMessageText(message.text)}
+              {message.isStreaming ? (
+                <div className="flex flex-col gap-2">
+                  {message.text && renderMessageText(message.text)}
+                  <div className="flex items-center gap-2 mt-1">
+                    <LoadingSpinner size="small" color="slate" />
+                    <span className="text-xs text-slate-500">AI is typing...</span>
+                  </div>
+                </div>
+              ) : (
+                renderMessageText(message.text)
+              )}
             </ChatMessage>
           ))}
           <div ref={messagesEndRef} className="h-1"/> {/* Scroll anchor */}
@@ -288,8 +298,17 @@ export function ChatWindow({
             className="inline-flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             aria-label="Send message"
           >
-            <Send size={16} />
-            <span className="hidden sm:inline">{isAiThinking ? "Thinking..." : "Send"}</span>
+            {isAiThinking ? (
+              <div className="flex items-center gap-2">
+                <LoadingSpinner size="small" color="white" />
+                <span className="hidden sm:inline">Thinking...</span>
+              </div>
+            ) : (
+              <>
+                <Send size={16} />
+                <span className="hidden sm:inline">Send</span>
+              </>
+            )}
           </motion.button>
         </form>
       </div>

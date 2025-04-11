@@ -1,8 +1,9 @@
 // FILE: src/app/api/chat/route.ts
 
-import { type NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { formatTime } from '@/utils/formatters';
+import { getTranscript, getTranscriptSnippet, extractTimestamps } from '@/utils/transcript';
 
 interface ChatRequestBody {
   userMessage: string;
@@ -25,9 +26,9 @@ const ai = new GoogleGenAI({ apiKey: API_KEY as string });
 
 export async function POST(request: NextRequest) {
   if (!API_KEY) {
-    return NextResponse.json(
-      { message: 'AI Service is not configured. Missing API key.' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ message: 'AI Service is not configured. Missing API key.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
@@ -36,9 +37,9 @@ export async function POST(request: NextRequest) {
     const { userMessage, chatHistory = [], videoDetails, timestamp, videoId } = body;
 
     if (!userMessage || !videoDetails) {
-      return NextResponse.json(
-        { message: 'Missing required fields: userMessage and videoDetails.' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ message: 'Missing required fields: userMessage and videoDetails.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -110,6 +111,41 @@ If you're uncertain about specific details, acknowledge your limitations but pro
       },
     });
 
+    // Fetch transcript if available
+    const transcript = await getTranscript(videoId);
+    
+    // Prepare transcript context
+    let transcriptContext = '';
+    let timestampsToCheck: number[] = [];
+    
+    // Check for explicit timestamp in the request
+    if (timestamp !== undefined) {
+      timestampsToCheck.push(timestamp);
+    }
+    
+    // Also check for timestamps mentioned in the message
+    const mentionedTimestamps = extractTimestamps(userMessage);
+    if (mentionedTimestamps.length > 0) {
+      timestampsToCheck = [...timestampsToCheck, ...mentionedTimestamps];
+    }
+    
+    // Get transcript snippets for all relevant timestamps
+    if (transcript && timestampsToCheck.length > 0) {
+      // Deduplicate timestamps
+      const uniqueTimestamps = [...new Set(timestampsToCheck)];
+      
+      // Get snippets for each timestamp and combine them
+      const snippets = uniqueTimestamps.map(ts => {
+        const formattedTime = formatTime(ts);
+        const snippet = getTranscriptSnippet(transcript, ts);
+        return snippet ? `TRANSCRIPT AROUND [${formattedTime}]:\n${snippet}\n` : '';
+      }).filter(Boolean);
+      
+      if (snippets.length > 0) {
+        transcriptContext = `\n\nRELEVANT TRANSCRIPT SECTIONS:\n${snippets.join('\n')}\n`;
+      }
+    }
+    
     let messageToSend = userMessage;
     if (timestamp !== undefined) {
       messageToSend = `${userMessage}
@@ -124,16 +160,75 @@ Remember to:
 5. Place this moment in the context of the broader video segment`;
     }
 
-    const response = await chat.sendMessage({
-      message: messageToSend,
+    // Add transcript context to the system instruction if available
+    if (transcriptContext) {
+      // Update the system instruction with transcript context
+      await chat.sendMessage({
+        message: `ADDITIONAL CONTEXT: ${transcriptContext}
+
+Please use this transcript information to enhance your responses. When answering questions about specific timestamps, refer to what was actually said in the transcript.`
+      });
+    }
+    
+    // Create a new ReadableStream for streaming the response
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Use streaming API
+          const streamingResponse = await chat.sendMessageStream({
+            message: messageToSend,
+          });
+
+          // Initialize a variable to accumulate the response text
+          let responseText = '';
+
+          // Process each chunk as it arrives
+          for await (const chunk of streamingResponse) {
+            if (chunk.text) {
+              // Append the new chunk to our accumulated text
+              responseText += chunk.text;
+              
+              // Send the chunk to the client
+              controller.enqueue(
+                new TextEncoder().encode(
+                  JSON.stringify({ chunk: chunk.text, done: false })
+                )
+              );
+            }
+          }
+
+          // Send a final message indicating the stream is complete
+          controller.enqueue(
+            new TextEncoder().encode(
+              JSON.stringify({ chunk: '', done: true, fullResponse: responseText })
+            )
+          );
+
+          // Close the stream
+          controller.close();
+        } catch (error) {
+          console.error('Error in streaming response:', error);
+          controller.enqueue(
+            new TextEncoder().encode(
+              JSON.stringify({ 
+                error: error instanceof Error ? error.message : 'Unknown error during streaming', 
+                done: true 
+              })
+            )
+          );
+          controller.close();
+        }
+      }
     });
 
-    if (!response || !response.text) {
-      console.error("Gemini API returned an empty response or no text.", response);
-      throw new Error("Received an empty response from the AI.");
-    }
-
-    return NextResponse.json({ aiMessage: response.text }, { status: 200 });
+    // Return the stream as the response
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
 
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
@@ -150,6 +245,9 @@ Remember to:
         errorMessage = error.message;
      }
 
-    return NextResponse.json({ message: errorMessage }, { status: statusCode });
+    return new Response(
+      JSON.stringify({ message: errorMessage }),
+      { status: statusCode, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

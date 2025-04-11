@@ -49,6 +49,7 @@ export function NavBar({ simplified = false, className = '' }: NavBarProps) {
             </SignedOut>
             <SignedIn>
               <UserButton
+                afterSignOutUrl="/"
                 appearance={{
                   elements: {
                     userButtonAvatarBox: "w-8 h-8"

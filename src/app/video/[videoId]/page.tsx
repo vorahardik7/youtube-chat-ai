@@ -7,30 +7,19 @@ import Link from 'next/link';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { ChatWindow } from '@/app/components/ChatWindow';
 import { NavBar } from '@/app/components/NavBar';
+import { ChatSidebar } from '@/app/components/ChatSidebar';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
 import { formatTime } from '@/utils/formatters';
-
-interface Message {
-    id: number;
-    user: string;
-    text: string; 
-    timestamp: number; 
-    isAi: boolean;
-    isStreaming?: boolean;
-}
-
-interface VideoDetails {
-    title: string;
-    channelTitle: string;
-    description: string;
-    publishedAt: string;
-}
+import { useUser } from '@clerk/nextjs';
+import { saveConversation, saveMessage, getConversationMessages } from '@/utils/chatStorage';
+import { Message, VideoDetails } from '@/types';
 
 
 
 export default function VideoPage() {
     const params = useParams();
     const videoId = Array.isArray(params.videoId) ? params.videoId[0] : params.videoId;
+    const { user, isSignedIn } = useUser();
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
@@ -39,6 +28,38 @@ export default function VideoPage() {
     const [videoDetails, setVideoDetails] = useState<VideoDetails | null>(null);
     const [player, setPlayer] = useState<YouTubePlayer | null>(null);
     const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
+    const [conversationId, setConversationId] = useState<string | null>(null);
+    const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+
+    // Effect to initialize conversation and load existing messages
+    useEffect(() => {
+        async function initConversation() {
+            if (isSignedIn && user && videoDetails) {
+                try {
+                    setIsLoadingHistory(true);
+                    // Create or get existing conversation
+                    const convId = await saveConversation(user.id, videoId as string, videoDetails.title);
+                    setConversationId(convId);
+                    
+                    if (convId) {
+                        // Load existing messages if any
+                        const existingMessages = await getConversationMessages(convId);
+                        if (existingMessages.length > 0) {
+                            setMessages(existingMessages);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error initializing conversation:', error);
+                } finally {
+                    setIsLoadingHistory(false);
+                }
+            }
+        }
+        
+        if (videoDetails) {
+            initConversation();
+        }
+    }, [isSignedIn, user, videoId, videoDetails]);
 
     useEffect(() => {
         if (!videoId) {
@@ -184,6 +205,13 @@ export default function VideoPage() {
         setMessages(prev => [...prev, userMsg]);
         setIsAiThinking(true);
 
+        // Save user message to Supabase if signed in
+        if (isSignedIn && conversationId) {
+            saveMessage(conversationId, userMsg).catch(err => {
+                console.error('Error saving user message:', err);
+            });
+        }
+
         // Create a streaming message placeholder
         const aiMessageId = Date.now() + 1;
         const streamingMessage: Message = {
@@ -299,17 +327,27 @@ export default function VideoPage() {
                             }
                             
                             // Update the message one last time and remove the streaming flag
+                            const finalAiMessage = {
+                                id: aiMessageId,
+                                user: 'AI Assistant',
+                                text: accumulatedText,
+                                timestamp: messageTimestamp,
+                                isAi: true,
+                                isStreaming: false
+                            };
+                            
                             setMessages(prev => 
                                 prev.map(msg => 
-                                    msg.id === aiMessageId 
-                                        ? {
-                                            ...msg,
-                                            text: accumulatedText,
-                                            isStreaming: false,
-                                          }
-                                        : msg
+                                    msg.id === aiMessageId ? finalAiMessage : msg
                                 )
                             );
+                            
+                            // Save AI message to Supabase if signed in
+                            if (isSignedIn && conversationId) {
+                                saveMessage(conversationId, finalAiMessage).catch(err => {
+                                    console.error('Error saving AI message:', err);
+                                });
+                            }
                         }
                     }
                 } catch (e) {
@@ -386,8 +424,8 @@ export default function VideoPage() {
                 </div>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-3.5rem)] overflow-hidden">
+            {/* Main Content Grid with Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-3.5rem)] overflow-hidden relative">
                 {/* Video Column */}
                 <div className="bg-slate-50 p-4 flex flex-col overflow-y-auto">
                     {/* YouTube Player Container */}
@@ -452,19 +490,24 @@ export default function VideoPage() {
                     </div>
                 </div>
 
-                {/* Chat Column - Now using the ChatWindow component */}
-                <ChatWindow 
-                    messages={messages}
-                    isLoading={isLoading}
-                    error={error}
-                    videoDetails={videoDetails}
-                    playerReady={!!player}
-                    currentTimestamp={currentTimestamp}
-                    isAiThinking={isAiThinking}
-                    onSendMessage={handleSendMessage}
-                    onTimestampClick={handleTimestampClick}
-                    formatTime={formatTime}
-                />
+                {/* Chat Column */}
+                <div className="relative">
+                    <ChatWindow 
+                        messages={messages}
+                        isLoading={isLoading || isLoadingHistory}
+                        error={error}
+                        videoDetails={videoDetails}
+                        playerReady={!!player}
+                        currentTimestamp={currentTimestamp}
+                        isAiThinking={isAiThinking}
+                        onSendMessage={handleSendMessage}
+                        onTimestampClick={handleTimestampClick}
+                        formatTime={formatTime}
+                    />
+                </div>
+                
+                {/* Chat Sidebar - Only for signed in users */}
+                {isSignedIn && <ChatSidebar currentVideoId={videoId as string} />}
             </div>
         </div>
     );

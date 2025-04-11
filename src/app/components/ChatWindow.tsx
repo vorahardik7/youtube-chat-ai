@@ -7,15 +7,7 @@ import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
 import { LoadingSpinner } from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-interface Message {
-  id: number;
-  user: string;
-  text: string;
-  timestamp: number;
-  isAi: boolean;
-  isStreaming?: boolean;
-}
+import { Message } from '@/types';
 
 interface ChatWindowProps {
   messages: Message[];

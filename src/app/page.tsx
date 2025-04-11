@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react'; 
 import { MessageSquare, Search, ArrowRight, Youtube } from 'lucide-react';
 import { NavBar } from '@/app/components/NavBar'; 
+import { RecentConversationsGrid } from '@/app/components/RecentConversationsGrid';
 import { SignedIn, SignedOut, useUser, SignInButton } from '@clerk/nextjs';
 
 export default function HomePage() {
@@ -90,6 +91,9 @@ export default function HomePage() {
               </motion.button>
             </form>
           </div>
+          
+          {/* Recent Conversations Grid */}
+          <RecentConversationsGrid />
         </SignedIn>
         
         <SignedOut>

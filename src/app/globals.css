@@ -8,7 +8,6 @@
   --border: #e2e8f0;
   --muted: #64748b; 
   --muted-foreground: #94a3b8; 
-  overscroll-behavior: none;
 }
 
 @theme inline {
@@ -36,6 +35,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
 }
 
 .scrollbar-thin {

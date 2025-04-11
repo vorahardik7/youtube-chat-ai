@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from 'react';
 import { MessageSquare, AlertTriangle, Clock, Send } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: number;
@@ -61,94 +63,135 @@ export function ChatWindow({
   const renderMessageText = (text: string) => {
     if (!text) return <span></span>;
     
-    // First process timestamps to make them clickable
-    const timestampRegex = /(\[(\d{1,2}:\d{2})\])/g;
+    // Check if the text is JSON
+    try {
+      const jsonObject = JSON.parse(text);
+      return (
+        <pre className="whitespace-pre-wrap overflow-x-auto bg-slate-50 p-2 rounded text-xs">
+          {JSON.stringify(jsonObject, null, 2)}
+        </pre>
+      );
+    } catch (e) {
+      // Not JSON, continue with regular text processing
+    }
     
-    // Split by timestamps first
-    const timeStampParts = text.split(timestampRegex);
+    // Process timestamps to make them clickable
+    const timestampRegex = /\[(\d{1,2}:\d{2})\]/g;
     
-    const processedParts: React.ReactNode[] = [];
-    let currentIndex = 0;
+    // Split the text by timestamps but keep the timestamps as parts
+    const parts = [];
+    let lastIndex = 0;
+    let match;
     
-    // Process timestamps
-    for (let i = 0; i < timeStampParts.length; i++) {
-      const part = timeStampParts[i];
-      if (!part) continue;
+    // Create a copy of the text that we'll modify
+    let processedText = text;
+    
+    // Find all timestamp matches and replace them with placeholders
+    interface TimeMatch {
+      placeholder: string;
+      fullMatch: string;
+      timeValue: string;
+    }
+    
+    const timeMatches: TimeMatch[] = [];
+    while ((match = timestampRegex.exec(text)) !== null) {
+      const fullMatch = match[0]; // [MM:SS]
+      const timeValue = match[1]; // MM:SS
+      const placeholder = `__TIMESTAMP_${timeMatches.length}__`;
       
-      if (i % 3 === 0) {
-        // This is regular text, process it for markdown
-        const paragraphs = part.split('\n\n').map((paragraph, pIndex) => {
-          // Handle headings (##)
-          if (paragraph.startsWith('## ')) {
-            return <h2 key={`h2-${currentIndex}-${pIndex}`} className="text-lg font-bold mt-3 mb-2">{paragraph.substring(3)}</h2>;
-          }
+      // Store the timestamp information
+      timeMatches.push({
+        placeholder,
+        fullMatch,
+        timeValue
+      });
+      
+      // Replace the timestamp with a placeholder
+      processedText = processedText.replace(fullMatch, placeholder);
+    }
+    
+    // Custom components for ReactMarkdown
+    const components = {
+      // Handle paragraphs that might contain our timestamp placeholders
+      p: ({ children, ...props }: any) => {
+        if (typeof children === 'string') {
+          // This shouldn't happen with ReactMarkdown, but just in case
+          return <p {...props}>{children}</p>;
+        }
+        
+        // Process the children to replace placeholders with timestamp buttons
+        const processedChildren = React.Children.map(children, (child) => {
+          if (typeof child !== 'string') return child;
           
-          // Handle bullet points
-          if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
-            const listItems = paragraph.split('\n').map((line, lIndex) => 
-              line.startsWith('- ') || line.startsWith('* ') ? 
-                <li key={`li-${currentIndex}-${pIndex}-${lIndex}`} className="ml-4">{line.substring(2)}</li> : 
-                null
-            ).filter(Boolean);
-            
-            return <ul key={`ul-${currentIndex}-${pIndex}`} className="list-disc my-2">{listItems}</ul>;
-          }
-          
-          // Process bold text (*text*)
-          const boldRegex = /\*([^*]+)\*/g;
-          let boldTextResult = [];
-          let lastIndex = 0;
-          let match;
-          
-          const paragraphText = paragraph.toString();
-          while ((match = boldRegex.exec(paragraphText)) !== null) {
-            if (match.index > lastIndex) {
-              boldTextResult.push(paragraphText.substring(lastIndex, match.index));
+          // Check if this text contains any of our placeholders
+          let result: React.ReactNode = child;
+          for (const { placeholder, fullMatch, timeValue } of timeMatches) {
+            if (child.includes(placeholder)) {
+              // Split by the placeholder
+              const parts = child.split(placeholder);
+              
+              // Create an array with text and timestamp buttons
+              const processed: React.ReactNode[] = [];
+              for (let i = 0; i < parts.length; i++) {
+                if (parts[i]) processed.push(parts[i]);
+                
+                // Add timestamp button after each part except the last
+                if (i < parts.length - 1) {
+                  processed.push(
+                    <button
+                      key={`ts-${i}-${timeValue}`}
+                      onClick={() => onTimestampClick(timeValue)}
+                      className="text-blue-600 hover:text-blue-800 underline font-medium mx-0.5 px-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      title={`Jump to ${timeValue} in video`}
+                    >
+                      {fullMatch}
+                    </button>
+                  );
+                }
+              }
+              
+              result = processed;
+              break;
             }
-            
-            boldTextResult.push(<strong key={`bold-${match.index}`}>{match[1]}</strong>);
-            lastIndex = match.index + match[0].length;
           }
           
-          if (lastIndex < paragraphText.length) {
-            boldTextResult.push(paragraphText.substring(lastIndex));
-          }
-          
-          // If there were no bold matches, just use the paragraph text
-          if (boldTextResult.length === 0) {
-            boldTextResult.push(paragraphText);
-          }
-          
-          return <p key={`p-${currentIndex}-${pIndex}`} className="mb-2">{boldTextResult}</p>;
+          return result;
         });
         
-        processedParts.push(...paragraphs);
-      } else if (i % 3 === 1) {
-        // This is a timestamp marker [MM:SS]
-        const timeMatch = timeStampParts[i+1]; // The next part contains the actual time
-        if (timeMatch) {
-          processedParts.push(
-            <button
-              key={`ts-${currentIndex}-${i}`}
-              onClick={() => onTimestampClick(timeMatch)}
-              className="text-blue-600 hover:text-blue-800 underline font-medium mx-0.5 px-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
-              title={`Jump to ${timeMatch} in video`}
-            >
-              {part} 
-            </button>
-          );
-        }
-      }
-      
-      // Skip the 3rd part which is already handled
-      if (i % 3 === 0) currentIndex++;
-    }
+        return <p {...props}>{processedChildren}</p>;
+      },
+      // Style headings appropriately
+      h2: ({ children }: any) => (
+        <h2 className="text-lg font-bold mt-3 mb-2">{children}</h2>
+      ),
+      // Style lists appropriately
+      ul: ({ children }: any) => (
+        <ul className="list-disc my-2 pl-5">{children}</ul>
+      ),
+      ol: ({ children }: any) => (
+        <ol className="list-decimal my-2 pl-5">{children}</ol>
+      ),
+      li: ({ children }: any) => (
+        <li className="ml-1">{children}</li>
+      ),
+      // Style code blocks
+      code: ({ inline, children }: any) => (
+        inline ? 
+          <code className="bg-slate-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code> :
+          <pre className="bg-slate-100 p-2 rounded my-2 overflow-x-auto text-sm font-mono">{children}</pre>
+      )
+    };
     
-    if (processedParts.length === 0) {
-      return <span>{text}</span>;
-    }
-    
-    return <div className="space-y-1">{processedParts}</div>;
+    return (
+      <div className="markdown-content space-y-1">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={components}
+        >
+          {processedText}
+        </ReactMarkdown>
+      </div>
+    );
   };
 
   return (
@@ -168,16 +211,10 @@ export function ChatWindow({
         </div>
       </div>
 
-      {/* Messages Area - Fixed height with scrolling */}
+      {/* Messages Area - Flexible height with scrolling */}
       <div 
         ref={chatContainerRef} 
         className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white scrollbar-thin"
-        style={{ 
-          height: 'calc(100vh - 14rem)', // For mobile/tablet
-          maxHeight: 'calc(100vh - 14rem)',
-          minHeight: '300px',
-          overflowY: 'auto'
-        }}
       >
         <div className="flex flex-col">
           {isLoading && messages.length === 0 && (
@@ -209,7 +246,6 @@ export function ChatWindow({
             <ChatMessage
               key={message.id}
               user={message.user}
-              timestamp={formatTime(message.timestamp)}
               isAi={message.isAi}
             >
               {renderMessageText(message.text)}

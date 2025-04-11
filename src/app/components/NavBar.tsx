@@ -1,15 +1,16 @@
 // FILE: src/app/components/NavBar.tsx
-'use client'; // Add this because it uses useState
+'use client'; 
 
 import { useState } from 'react';
-import Link from 'next/link'; // Import from next/link
+import Link from 'next/link'; 
 import { motion } from 'motion/react';
 import { MessageSquare, Menu, X } from 'lucide-react';
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 export function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const closeMenu = () => setIsMobileMenuOpen(false); // Helper to close menu
+  const closeMenu = () => setIsMobileMenuOpen(false); 
 
   return (
     <div className="border-b border-slate-200 bg-white sticky top-0 z-20 shadow-sm"> 
@@ -26,31 +27,57 @@ export function NavBar() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
-              <Link href="/" className="text-slate-700 hover:text-teal-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                Home
-              </Link>
-              {/* Keep external links as <a> */}
-              <a href="https://github.com/yourusername/youtube-chat" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-teal-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                GitHub
-              </a>
-              <motion.a
-                href="mailto:your-email@example.com"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Contact
-              </motion.a>
-            </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12h8"></path>
+                    <path d="M12 8v8"></path>
+                  </svg>
+                  Sign in with Google
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "w-8 h-8"
+                  }
+                }}
+              />
+            </SignedIn>
           </div>
-
+          
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12h8"></path>
+                    <path d="M12 8v8"></path>
+                  </svg>
+                  Sign in
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "w-8 h-8"
+                  }
+                }}
+              />
+            </SignedIn>
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:text-teal-600 hover:bg-slate-100 focus:outline-none"
+              className="ml-2 inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:text-teal-600 hover:bg-slate-100 focus:outline-none"
               aria-controls="mobile-menu"
               aria-expanded={isMobileMenuOpen}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -62,7 +89,6 @@ export function NavBar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <motion.div
           id="mobile-menu"
@@ -80,22 +106,18 @@ export function NavBar() {
             >
               Home
             </Link>
-            <a
-              href="https://github.com/yourusername/youtube-chat"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={closeMenu}
-              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-teal-600 hover:bg-slate-50 transition-colors"
-            >
-              GitHub
-            </a>
-            <a
-              href="mailto:your-email@example.com"
-              onClick={closeMenu}
-              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-teal-600 hover:bg-slate-50 transition-colors"
-            >
-              Contact
-            </a>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-teal-600 hover:text-teal-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12h8"></path>
+                    <path d="M12 8v8"></path>
+                  </svg>
+                  Sign in with Google
+                </button>
+              </SignInButton>
+            </SignedOut>
           </div>
         </motion.div>
       )}

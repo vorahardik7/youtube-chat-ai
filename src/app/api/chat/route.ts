@@ -2,6 +2,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { formatTime } from '@/utils/formatters';
 
 interface ChatRequestBody {
   userMessage: string;
@@ -152,13 +153,3 @@ Remember to:
     return NextResponse.json({ message: errorMessage }, { status: statusCode });
   }
 }
-
-const formatTime = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) {
-        return '00:00';
-    }
-    const totalSeconds = Math.floor(seconds);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};

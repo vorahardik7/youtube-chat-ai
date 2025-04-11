@@ -8,11 +8,11 @@ import { motion } from 'motion/react';
 interface ChatMessageProps {
   user: string;
   children: React.ReactNode; 
-  timestamp: string;
   isAi: boolean;
+  timestamp?: string; // Make timestamp optional
 }
 
-export function ChatMessage({ user, children, timestamp, isAi }: ChatMessageProps) {
+export function ChatMessage({ user, children, isAi }: ChatMessageProps) {
   return (
     <motion.div
       className={`flex gap-3 mb-4 ${isAi ? '' : 'justify-end'}`}
@@ -42,9 +42,7 @@ export function ChatMessage({ user, children, timestamp, isAi }: ChatMessageProp
             <span className={`font-medium text-sm ${isAi ? 'text-teal-700' : 'text-slate-700'}`}>
               {user}
             </span>
-            <span className="text-xs text-slate-400 font-normal">
-              {timestamp}
-            </span>
+
           </div>
           <div
             className={`p-3 rounded-lg shadow-sm ${
@@ -54,7 +52,7 @@ export function ChatMessage({ user, children, timestamp, isAi }: ChatMessageProp
             }`}
           >
             {/* Render children passed from VideoPage */}
-            <div className={`text-sm break-words leading-relaxed prose-sm max-w-none ${isAi ? 'prose-headings:text-teal-800 prose-strong:text-slate-900 prose-li:my-0 prose-p:my-1' : 'prose-headings:text-white prose-strong:text-white/90 prose-li:text-white/90'}`}>
+            <div className={`text-sm break-words leading-relaxed ${isAi ? 'prose-headings:text-teal-800 prose-strong:font-bold prose-li:my-0 prose-p:my-1' : 'prose-headings:text-white/90 prose-strong:text-white/90 prose-li:text-white/90'}`}>
                {children}
             </div>
           </div>

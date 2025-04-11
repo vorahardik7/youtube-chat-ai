@@ -4,11 +4,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'motion/react';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
-import { ChatMessageSkeleton } from '@/app/components/ChatMessage';
 import { ChatWindow } from '@/app/components/ChatWindow';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
+import { formatTime } from '@/utils/formatters';
 
 interface Message {
     id: number;
@@ -25,15 +24,7 @@ interface VideoDetails {
     publishedAt: string;
 }
 
-const formatTime = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) {
-        return '00:00';
-    }
-    const totalSeconds = Math.floor(seconds);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
+
 
 export default function VideoPage() {
     const params = useParams();

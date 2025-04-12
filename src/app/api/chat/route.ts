@@ -125,7 +125,7 @@ If the user provides a timestamp like [MM:SS], focus your answer on the content 
     }
     
     // Keep the user message simple
-    let messageToSend = userMessage;
+    const messageToSend = userMessage;
     
     // Construct the context to send to the AI
     let fullContext = messageToSend;
@@ -197,14 +197,19 @@ If the user provides a timestamp like [MM:SS], focus your answer on the content 
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calling Gemini API:', error);
     let errorMessage = 'Failed to get response from AI assistant.';
     let statusCode = 500;
     let errorCode = 'UNKNOWN_ERROR';
 
     // Handle different types of errors
-    if (error.message?.includes('blocked') || error.response?.promptFeedback?.blockReason) {
+    if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Record<string, unknown>).message === 'string' && ((error as Record<string, string>).message.includes('blocked')) || 
+        (typeof error === 'object' && error !== null && 'response' in error && typeof (error as Record<string, unknown>).response === 'object' && 
+        (error as Record<string, unknown>).response !== null && 'promptFeedback' in (error as Record<string, Record<string, unknown>>).response && 
+        typeof (error as Record<string, Record<string, unknown>>).response.promptFeedback === 'object' && 
+        (error as Record<string, Record<string, unknown>>).response.promptFeedback !== null && 
+        'blockReason' in (error as Record<string, Record<string, Record<string, unknown>>>).response.promptFeedback)) {
       errorMessage = "The response was blocked due to safety settings.";
       statusCode = 400;
       errorCode = 'CONTENT_BLOCKED';
@@ -212,24 +217,32 @@ If the user provides a timestamp like [MM:SS], focus your answer on the content 
       errorMessage = "Invalid request for`mat.";
       statusCode = 400;
       errorCode = 'INVALID_FORMAT';
-    } else if (error.message?.includes('rate') || error.message?.includes('quota') || error.message?.includes('limit')) {
+    } else if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Record<string, unknown>).message === 'string' && 
+             ((error as Record<string, string>).message.includes('rate') || 
+              (error as Record<string, string>).message.includes('quota') || 
+              (error as Record<string, string>).message.includes('limit'))) {
       // Rate limit or quota exceeded
       errorMessage = "AI service rate limit reached. Please try again in a moment.";
       statusCode = 429;
       errorCode = 'RATE_LIMITED';
-    } else if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+    } else if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Record<string, unknown>).message === 'string' && 
+             ((error as Record<string, string>).message.includes('timeout') || 
+              (error as Record<string, string>).message.includes('timed out'))) {
       // Request timeout
       errorMessage = "The AI service took too long to respond. Please try again.";
       statusCode = 408;
       errorCode = 'TIMEOUT';
-    } else if (error.message?.includes('token') || error.message?.includes('credential') || error.message?.includes('auth')) {
+    } else if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Record<string, unknown>).message === 'string' && 
+             ((error as Record<string, string>).message.includes('token') || 
+              (error as Record<string, string>).message.includes('credential') || 
+              (error as Record<string, string>).message.includes('auth'))) {
       // Authentication issues
       errorMessage = "There was an authentication issue with the AI service.";
       statusCode = 401;
       errorCode = 'AUTH_ERROR';
       console.error('Authentication error with Gemini API - check your API key configuration');
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Record<string, unknown>).message === 'string') {
+      errorMessage = (error as Record<string, string>).message;
     }
 
     // Add retry-after header for rate limits

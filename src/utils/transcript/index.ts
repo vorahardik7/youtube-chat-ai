@@ -65,7 +65,7 @@ export async function getTranscript(videoId: string): Promise<TranscriptEntry[] 
   // Implement retry logic
   const MAX_RETRIES = 3;
   let retries = 0;
-  let lastError: any = null;
+  let lastError: Error | unknown = null;
   
   while (retries < MAX_RETRIES) {
     try {
@@ -88,11 +88,12 @@ export async function getTranscript(videoId: string): Promise<TranscriptEntry[] 
       });
       
       return transcript;
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
       
       // Check if this is a rate limiting or temporary error
-      const errorMessage = error?.message || '';
+      const errorObj = error as Record<string, unknown>;
+      const errorMessage = typeof errorObj.message === 'string' ? errorObj.message : '';
       const isRateLimited = 
         errorMessage.includes('rate') || 
         errorMessage.includes('429') || 

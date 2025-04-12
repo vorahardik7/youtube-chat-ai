@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   // Implement retry logic with exponential backoff
   const MAX_RETRIES = 3;
   let retries = 0;
-  let lastError: any = null;
+  let lastError: Error | unknown = null;
 
   while (retries < MAX_RETRIES) {
     try {
@@ -56,13 +56,16 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
-      const status = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error?.errors?.[0]?.message ||
-                      error.response?.data?.error?.message ||
-                      error.message ||
-                      'Failed to fetch video details from YouTube.';
+      // Type guard for axios error
+      const isAxiosError = typeof error === 'object' && error !== null && 'response' in error;
+      const axiosError = isAxiosError ? error as { response?: { status?: number, data?: { error?: { errors?: Array<{message: string}>, message?: string } } } } : null;
+      
+      const status = axiosError?.response?.status || 500;
+      const errorMessage = axiosError?.response?.data?.error?.errors?.[0]?.message ||
+                      axiosError?.response?.data?.error?.message ||
+                      (error instanceof Error ? error.message : 'Failed to fetch video details from YouTube.');
 
       // Check if it's a quota exceeded error
       const isQuotaExceeded = 
@@ -103,12 +106,15 @@ export async function GET(request: NextRequest) {
   }
 
   // If we've exhausted retries or encountered a non-retryable error
-  console.error('Error fetching from YouTube API:', lastError?.response?.data || lastError?.message);
-  const status = lastError?.response?.status || 500;
-  const message = lastError?.response?.data?.error?.errors?.[0]?.message ||
-                  lastError?.response?.data?.error?.message ||
-                  lastError?.message ||
-                  'Failed to fetch video details from YouTube.';
+  // Type guard for axios error
+  const isAxiosError = typeof lastError === 'object' && lastError !== null && 'response' in lastError;
+  const axiosError = isAxiosError ? lastError as { response?: { status?: number, data?: { error?: { errors?: Array<{message: string}>, message?: string } } } } : null;
+  
+  console.error('Error fetching from YouTube API:', axiosError?.response?.data || (lastError instanceof Error ? lastError.message : 'Unknown error'));
+  const status = axiosError?.response?.status || 500;
+  const message = axiosError?.response?.data?.error?.errors?.[0]?.message ||
+                  axiosError?.response?.data?.error?.message ||
+                  (lastError instanceof Error ? lastError.message : 'Failed to fetch video details from YouTube.');
   
   return NextResponse.json({ message: message }, { status: status });
 }

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { motion } from 'motion/react'; 
-import { MessageSquare, Search, ArrowRight, Youtube } from 'lucide-react';
+import { MessageSquare, Search, ArrowRight } from 'lucide-react';
 import { NavBar } from '@/app/components/NavBar'; 
 import { RecentConversationsGrid } from '@/app/components/RecentConversationsGrid';
 import { SignedIn, SignedOut, useUser, SignInButton } from '@clerk/nextjs';
@@ -13,7 +13,7 @@ export default function HomePage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
+  const { } = useUser();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -34,7 +34,7 @@ export async function saveConversation(userId: string, videoId: string, videoTit
     
     if (existingData) {
       console.log('Updating existing conversation:', existingData.id);
-      const { data: updateData, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('conversations')
         .update({ 
           video_title: videoTitle,
@@ -79,11 +79,12 @@ export async function saveConversation(userId: string, videoId: string, videoTit
       console.log('Created conversation:', insertData?.[0]?.id);
       return insertData?.[0]?.id || null;
     }
-  } catch (error: any) { // Catch as 'any' to access potential properties
+  } catch (error: unknown) { // Use unknown instead of any for better type safety
+    const errorObj = error as Record<string, unknown>;
     console.error('Error saving conversation:', {
-      message: error?.message,
-      code: error?.code,
-      details: error?.details,
+      message: errorObj.message,
+      code: errorObj.code,
+      details: errorObj.details,
       error: error // Log the full object
     });
     return null;
@@ -323,7 +324,7 @@ export async function getConversationMessages(
             isAi: msg.is_ai
           };
         }
-      } catch (e) {
+      } catch {
         // If parsing fails, use the content as is
         messageContent = msg.content;
       }

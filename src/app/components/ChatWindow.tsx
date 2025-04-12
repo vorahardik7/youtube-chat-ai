@@ -36,7 +36,7 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  // We'll use this state later for typing indicators
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -51,7 +51,7 @@ export function ChatWindow({
     
     onSendMessage(trimmedMessage);
     setNewMessage('');
-    setIsTyping(true);
+    // We'll implement typing indicators in a future update
   };
 
   const renderMessageText = (text: string) => {
@@ -69,7 +69,7 @@ export function ChatWindow({
         );
       }
       // If it's not a complex object, fall through to Markdown rendering
-    } catch (e) {
+    } catch {
       // Not JSON, proceed to Markdown rendering
     }
 
@@ -80,18 +80,35 @@ export function ChatWindow({
       timeValue: string; // "MM:SS"
     }
     
-    // Regex only for [MM:SS]
-    const timestampRegex = /\[(\d{1,2}:\d{2})\]/g;
+    // Regex for both [MM:SS] and TIMESTAMP_X formats
+    const mmssRegex = /\[(\d{1,2}:\d{2})\]/g;
+    const timestampXRegex = /TIMESTAMP_(\d+)/g;
     const timeMatches: TimeMatch[] = [];
     let match;
     
     // Find all "[MM:SS]" matches in the original text
-    while ((match = timestampRegex.exec(text)) !== null) {
+    while ((match = mmssRegex.exec(text)) !== null) {
       timeMatches.push({
         index: match.index,
         fullMatch: match[0],
         timeValue: match[1],
       });
+    }
+    
+    // Find all "TIMESTAMP_X" matches and convert them to MM:SS format
+    while ((match = timestampXRegex.exec(text)) !== null) {
+      const seconds = parseInt(match[1], 10);
+      if (!isNaN(seconds)) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        const timeValue = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        
+        timeMatches.push({
+          index: match.index,
+          fullMatch: match[0],
+          timeValue: timeValue,
+        });
+      }
     }
 
     // If no timestamps found, render directly (optimization)
@@ -108,9 +125,12 @@ export function ChatWindow({
     // We'll directly process timestamps in the paragraph component instead of using a separate renderer
 
     // Create a custom components object for ReactMarkdown
-    const components = {
+    // Import necessary types
+    type ComponentPropsWithChildren = { children: React.ReactNode };
+    
+    const components: Record<string, React.ComponentType<ComponentPropsWithChildren>> = {
       // Process paragraphs to look for timestamps within their text content
-      p: ({ children, ...props }: any) => {
+      p: ({ children, ...props }: ComponentPropsWithChildren) => {
         // Process each child node that might contain timestamps
         const processedChildren = React.Children.map(children, (child) => {
           // If not a string, return as is
@@ -165,21 +185,21 @@ export function ChatWindow({
       },
       
       // Style headings appropriately
-      h2: ({ children }: any) => (
+      h2: ({ children }: ComponentPropsWithChildren) => (
         <h2 className="text-lg font-bold mt-3 mb-2">{children}</h2>
       ),
       // Style lists appropriately
-      ul: ({ children }: any) => (
+      ul: ({ children }: ComponentPropsWithChildren) => (
         <ul className="list-disc my-2 pl-5">{children}</ul>
       ),
-      ol: ({ children }: any) => (
+      ol: ({ children }: ComponentPropsWithChildren) => (
         <ol className="list-decimal my-2 pl-5">{children}</ol>
       ),
-      li: ({ children }: any) => (
+      li: ({ children }: ComponentPropsWithChildren) => (
         <li className="ml-1">{children}</li>
       ),
       // Style code blocks
-      code: ({ inline, children }: any) => (
+      code: ({ inline, children }: ComponentPropsWithChildren & { inline?: boolean }) => (
         inline ? 
           <code className="bg-slate-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code> :
           <pre className="bg-slate-100 p-2 rounded my-2 overflow-x-auto text-sm font-mono">{children}</pre>

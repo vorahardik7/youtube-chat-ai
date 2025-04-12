@@ -6,14 +6,14 @@ import { getUserConversations, deleteConversation, Conversation } from '@/utils/
 import { NavBar } from '@/app/components/NavBar';
 import Link from 'next/link';
 import { MessageSquare, Clock, Youtube, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+// Navigation will be handled with Link components
 
 export default function HistoryPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const { user, isSignedIn } = useUser();
-  const router = useRouter();
+  // We'll use Link components for navigation instead of router
 
   useEffect(() => {
     async function loadConversations() {

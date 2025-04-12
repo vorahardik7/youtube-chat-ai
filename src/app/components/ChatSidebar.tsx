@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { getUserConversations, deleteConversation, Conversation } from '@/utils/chatStorage';
-import { Clock, MessageSquare, ChevronLeft, X, Trash2, Youtube, Search, Plus } from 'lucide-react';
+import { Clock, MessageSquare, X, Trash2, Youtube, Search, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 

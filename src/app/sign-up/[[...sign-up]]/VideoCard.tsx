@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Clock, MessageSquare } from 'lucide-react';
 
@@ -33,10 +34,12 @@ export function VideoCard({
     >
       <Link href={`/video/${videoId}`} className="block">
         <div className="relative rounded-t-lg overflow-hidden aspect-video bg-slate-800">
-          <img
+          <Image
             src={thumbnail}
             alt={title}
-            className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition duration-300 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-200" />
           

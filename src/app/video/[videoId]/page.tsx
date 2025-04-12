@@ -1,7 +1,7 @@
 // FILE: src/app/video/[videoId]/page.tsx
 'use client'; 
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle, AlignLeft } from 'lucide-react';
@@ -83,7 +83,7 @@ export default function VideoPage() {
                     try {
                         const errorData = await response.json();
                         errorMessage = errorData.message || errorMessage;
-                    } catch (e) {
+                    } catch {
                         errorMessage = response.statusText || errorMessage;
                     }
                     throw new Error(errorMessage);
@@ -144,7 +144,7 @@ export default function VideoPage() {
                 if (typeof time === 'number') {
                     setCurrentTimestamp(Math.floor(time));
                 }
-            } catch (e) { /* Ignore */ }
+            } catch { /* Ignore */ }
         };
 
         updateTime();
@@ -170,7 +170,7 @@ export default function VideoPage() {
                 if (typeof time === 'number') {
                     setCurrentTimestamp(Math.floor(time));
                 }
-            } catch (e) {
+            } catch {
                 /* ignore errors */
             }
         }

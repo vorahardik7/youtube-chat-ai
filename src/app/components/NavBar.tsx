@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link'; 
-import { MessageSquare, Menu, X, AlignLeft, Search, Youtube } from 'lucide-react';
+import { MessageSquare, Menu, X, Search, Youtube } from 'lucide-react';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 interface NavBarProps {

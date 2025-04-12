@@ -4,19 +4,20 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { getUserConversations, deleteConversation, Conversation } from '@/utils/chatStorage';
-import { Clock, MessageSquare, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
+import { Clock, MessageSquare, ChevronLeft, X, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 
 interface ChatSidebarProps {
   currentVideoId?: string;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function ChatSidebar({ currentVideoId }: ChatSidebarProps) {
+export function ChatSidebar({ currentVideoId, isOpen, onClose }: ChatSidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { user, isSignedIn } = useUser();
   const router = useRouter();
@@ -58,28 +59,6 @@ export function ChatSidebar({ currentVideoId }: ChatSidebarProps) {
 
   return (
     <>
-      {/* Sidebar Toggle Button */}
-      <div 
-        className="fixed top-1/2 left-0 transform -translate-y-1/2 z-50"
-      >
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className={`bg-teal-600 text-white p-2 rounded-r-md shadow-lg flex items-center justify-center h-24 ${isOpen ? 'w-6' : 'w-10'} transition-all duration-300`}
-          aria-label={isOpen ? "Close chat history" : "Open chat history"}
-        >
-          <div className="flex flex-col items-center justify-center gap-2">
-            {isOpen ? (
-              <ChevronLeft size={18} />
-            ) : (
-              <>
-                <ChevronRight size={18} className={`${!isOpen ? 'animate-pulse' : ''}`} />
-                <span className="text-xs font-medium whitespace-nowrap rotate-90 tracking-wider">HISTORY</span>
-              </>
-            )}
-          </div>
-        </button>
-      </div>
-
       {/* Sidebar */}
       <motion.div 
         className="fixed top-0 left-0 h-full bg-white border-r border-slate-200 shadow-lg z-40 overflow-hidden"
@@ -95,11 +74,11 @@ export function ChatSidebar({ currentVideoId }: ChatSidebarProps) {
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <h2 className="font-semibold text-slate-800">Your Conversations</h2>
             <button 
-              onClick={() => setIsOpen(false)}
-              className="md:hidden p-1 rounded-full hover:bg-slate-100"
+              onClick={onClose}
+              className="p-1 rounded-full hover:bg-slate-100"
               aria-label="Close sidebar"
             >
-              <ChevronRight size={20} />
+              <X size={20} />
             </button>
           </div>
 

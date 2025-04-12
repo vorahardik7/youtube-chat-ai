@@ -4,13 +4,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, AlignLeft } from 'lucide-react';
 import { ChatWindow } from '@/app/components/ChatWindow';
 import { NavBar } from '@/app/components/NavBar';
 import { ChatSidebar } from '@/app/components/ChatSidebar';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
 import { formatTime } from '@/utils/formatters';
-import { useUser } from '@clerk/nextjs';
+import { useUser, UserButton } from '@clerk/nextjs';
 import { saveConversation, saveMessage, getConversationMessages } from '@/utils/chatStorage';
 import { Message, VideoDetails } from '@/types';
 
@@ -30,6 +30,7 @@ export default function VideoPage() {
     const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
     // Effect to initialize conversation and load existing messages
     useEffect(() => {
@@ -427,20 +428,49 @@ export default function VideoPage() {
     return (
         <div className="min-h-screen bg-white flex flex-col">
             {/* Header */}
-            <div className="h-14 border-b border-slate-200 px-4 flex items-center flex-shrink-0 sticky top-0 bg-white z-10 shadow-sm">
-                <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-teal-600 transition-colors">
-                        <ArrowLeft size={18} />
-                        <span className="font-medium text-sm md:text-base">Back</span>
-                    </Link>
-                    <h1 className="text-base md:text-lg font-semibold text-slate-800 truncate px-2 text-center flex-1 mx-4" title={videoDetails?.title}>
+            <NavBar 
+                simplified={true} 
+                className="shadow-none h-14 border-b border-slate-200 flex-shrink-0 sticky top-0 bg-white z-10 shadow-sm" 
+                leftContent={
+                    <div className="flex items-center gap-4 pl-4">
+                        {/* Sidebar toggle button - only for signed in users */}
+                        {isSignedIn && (
+                            <button 
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                                className="flex items-center gap-1.5 text-slate-600 hover:text-teal-600 p-1.5 rounded transition-colors"
+                                aria-label="Toggle chat history"
+                            >
+                                <AlignLeft size={18} />
+                                <span className="font-medium text-sm">View Chats</span>
+                            </button>
+                        )}
+                        
+                        <Link href="/" className="flex items-center gap-1.5 text-slate-600 hover:text-teal-600 transition-colors ml-1">
+                            <ArrowLeft size={18} />
+                            <span className="font-medium text-sm">Back</span>
+                        </Link>
+                    </div>
+                }
+                centerContent={
+                    <h1 className="text-base font-semibold text-slate-800 truncate text-center mx-4" title={videoDetails?.title}>
                         {isLoading && !error ? "Loading Video..." : videoDetails?.title || "Video Chat"}
                     </h1>
-                    <div className="flex-shrink-0">
-                        <NavBar simplified={true} className="shadow-none" />
+                }
+                rightContent={
+                    <div className="pr-4">
+                        {isSignedIn ? (
+                            <UserButton
+                                afterSignOutUrl="/"
+                                appearance={{
+                                    elements: {
+                                        userButtonAvatarBox: "w-8 h-8"
+                                    }
+                                }}
+                            />
+                        ) : null}
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Main Content Grid with Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-3.5rem)] overflow-hidden relative">
@@ -525,7 +555,13 @@ export default function VideoPage() {
                 </div>
                 
                 {/* Chat Sidebar - Only for signed in users */}
-                {isSignedIn && <ChatSidebar currentVideoId={videoId as string} />}
+                {isSignedIn && 
+                    <ChatSidebar 
+                        currentVideoId={videoId as string} 
+                        isOpen={isSidebarOpen} 
+                        onClose={() => setIsSidebarOpen(false)} 
+                    />
+                }
             </div>
         </div>
     );

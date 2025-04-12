@@ -4,15 +4,18 @@
 import { useState } from 'react';
 import Link from 'next/link'; 
 import { motion } from 'motion/react';
-import { MessageSquare, Menu, X } from 'lucide-react';
+import { MessageSquare, Menu, X, AlignLeft } from 'lucide-react';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 interface NavBarProps {
   simplified?: boolean;
   className?: string;
+  leftContent?: React.ReactNode;
+  centerContent?: React.ReactNode;
+  rightContent?: React.ReactNode;
 }
 
-export function NavBar({ simplified = false, className = '' }: NavBarProps) {
+export function NavBar({ simplified = false, className = '', leftContent, centerContent, rightContent }: NavBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const closeMenu = () => setIsMobileMenuOpen(false); 
@@ -21,42 +24,51 @@ export function NavBar({ simplified = false, className = '' }: NavBarProps) {
     <div className={`${simplified ? '' : 'border-b border-slate-200'} bg-white ${simplified ? '' : 'sticky top-0 z-20 shadow-sm'} ${className}`}>
       <div className={`${simplified ? 'px-2' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
         <div className="flex items-center justify-between h-16">
-          {/* Logo and Brand */}
-          {!simplified && (
-            <div className="flex items-center">
+          {/* Left Content */}
+          <div className="flex items-center">
+            {leftContent || (!simplified && (
               <Link href="/" className="flex items-center gap-2" onClick={closeMenu}>
                 <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center">
                   <MessageSquare size={18} className="text-white" />
                 </div>
                 <span className="text-slate-900 font-bold text-lg">VideoChat AI</span>
               </Link>
-            </div>
-          )}
+            ))}
+          </div>
+          
+          {/* Center Content */}
+          <div className="flex-1 flex justify-center">
+            {centerContent}
+          </div>
 
-          {/* Desktop Navigation */}
-          <div className="flex items-center space-x-4">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M8 12h8"></path>
-                    <path d="M12 8v8"></path>
-                  </svg>
-                  Sign in with Google
-                </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-8 h-8"
-                  }
-                }}
-              />
-            </SignedIn>
+          {/* Right Content */}
+          <div className="flex items-center">
+            {rightContent || (
+              <>
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <button className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8 12h8"></path>
+                        <path d="M12 8v8"></path>
+                      </svg>
+                      Sign in with Google
+                    </button>
+                  </SignInButton>
+                </SignedOut>
+                <SignedIn>
+                  <UserButton
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        userButtonAvatarBox: "w-8 h-8"
+                      }
+                    }}
+                  />
+                </SignedIn>
+              </>
+            )}
           </div>
           
           {/* Mobile Menu Button - Only show if not simplified */}

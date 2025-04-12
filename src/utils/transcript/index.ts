@@ -150,15 +150,8 @@ export function getTranscriptSnippet(
   
   if (relevantEntries.length === 0) return '';
   
-  // Format the entries with timestamps
-  return relevantEntries.map(entry => {
-    const seconds = Math.floor(entry.offset / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    const timestamp = `[${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}]`;
-    
-    return `${timestamp} ${entry.text}`;
-  }).join('\n');
+  // Return just the joined text
+  return relevantEntries.map(entry => entry.text).join(' ');
 }
 
 /**

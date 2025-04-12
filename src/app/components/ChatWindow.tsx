@@ -57,101 +57,114 @@ export function ChatWindow({
 
   const renderMessageText = (text: string) => {
     if (!text) return <span></span>;
-    
+
+    // Attempt to parse as JSON (e.g., for structured data)
     try {
       const jsonObject = JSON.parse(text);
-      return (
-        <pre className="whitespace-pre-wrap overflow-x-auto bg-slate-50 p-2 rounded text-xs">
-          {JSON.stringify(jsonObject, null, 2)}
-        </pre>
-      );
+      // Basic check if it's an object and not just a string/number parsed as JSON
+      if (typeof jsonObject === 'object' && jsonObject !== null && !Array.isArray(jsonObject)) {
+        return (
+          <pre className="whitespace-pre-wrap overflow-x-auto bg-slate-50 p-2 rounded text-xs">
+            {JSON.stringify(jsonObject, null, 2)}
+          </pre>
+        );
+      }
+      // If it's not a complex object, fall through to Markdown rendering
     } catch (e) {
+      // Not JSON, proceed to Markdown rendering
+    }
+
+    // --- Store matches with original text index ---
+    interface TimeMatch {
+      index: number; // Position in the original string
+      fullMatch: string; // "[MM:SS]"
+      timeValue: string; // "MM:SS"
     }
     
+    // Regex only for [MM:SS]
     const timestampRegex = /\[(\d{1,2}:\d{2})\]/g;
-    
-    // Split the text by timestamps but keep the timestamps as parts
-    const parts = [];
-    let lastIndex = 0;
+    const timeMatches: TimeMatch[] = [];
     let match;
     
-    // Create a copy of the text that we'll modify
-    let processedText = text;
-    
-    // Find all timestamp matches and replace them with placeholders
-    interface TimeMatch {
-      placeholder: string;
-      fullMatch: string;
-      timeValue: string;
-    }
-    
-    const timeMatches: TimeMatch[] = [];
+    // Find all "[MM:SS]" matches in the original text
     while ((match = timestampRegex.exec(text)) !== null) {
-      const fullMatch = match[0]; // [MM:SS]
-      const timeValue = match[1]; // MM:SS
-      const placeholder = `__TIMESTAMP_${timeMatches.length}__`;
-      
-      // Store the timestamp information
       timeMatches.push({
-        placeholder,
-        fullMatch,
-        timeValue
+        index: match.index,
+        fullMatch: match[0],
+        timeValue: match[1],
       });
-      
-      // Replace the timestamp with a placeholder
-      processedText = processedText.replace(fullMatch, placeholder);
     }
-    
-    // Custom components for ReactMarkdown
+
+    // If no timestamps found, render directly (optimization)
+    if (timeMatches.length === 0) {
+      return (
+        <div className="markdown-content space-y-1">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {text}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+
+    // We'll directly process timestamps in the paragraph component instead of using a separate renderer
+
+    // Create a custom components object for ReactMarkdown
     const components = {
-      // Handle paragraphs that might contain our timestamp placeholders
+      // Process paragraphs to look for timestamps within their text content
       p: ({ children, ...props }: any) => {
-        if (typeof children === 'string') {
-          // This shouldn't happen with ReactMarkdown, but just in case
-          return <p {...props}>{children}</p>;
-        }
-        
-        // Process the children to replace placeholders with timestamp buttons
+        // Process each child node that might contain timestamps
         const processedChildren = React.Children.map(children, (child) => {
+          // If not a string, return as is
           if (typeof child !== 'string') return child;
           
-          // Check if this text contains any of our placeholders
-          let result: React.ReactNode = child;
-          for (const { placeholder, fullMatch, timeValue } of timeMatches) {
-            if (child.includes(placeholder)) {
-              // Split by the placeholder
-              const parts = child.split(placeholder);
-              
-              // Create an array with text and timestamp buttons
-              const processed: React.ReactNode[] = [];
-              for (let i = 0; i < parts.length; i++) {
-                if (parts[i]) processed.push(parts[i]);
-                
-                // Add timestamp button after each part except the last
-                if (i < parts.length - 1) {
-                  processed.push(
-                    <button
-                      key={`ts-${i}-${timeValue}`}
-                      onClick={() => onTimestampClick(timeValue)}
-                      className="text-blue-600 hover:text-blue-800 underline font-medium mx-0.5 px-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
-                      title={`Jump to ${timeValue} in video`}
-                    >
-                      {fullMatch}
-                    </button>
-                  );
-                }
+          const segments: React.ReactNode[] = [];
+          let currentText = child;
+          
+          // Process each timestamp match in this text node
+          for (let i = 0; i < timeMatches.length; i++) {
+            const { fullMatch, timeValue } = timeMatches[i];
+            const matchIndex = currentText.indexOf(fullMatch);
+            
+            if (matchIndex !== -1) {
+              // Add text before the timestamp
+              if (matchIndex > 0) {
+                segments.push(currentText.substring(0, matchIndex));
               }
               
-              result = processed;
-              break;
+              // Add the timestamp button
+              const tooltipText = `Jump to ${timeValue} in video`;
+              segments.push(
+                <button
+                  key={`ts-${i}-${timeValue}`}
+                  onClick={() => {
+                    console.log(`Timestamp Clicked: ${timeValue}`);
+                    onTimestampClick(timeValue);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline font-medium mx-0.5 px-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  title={tooltipText}
+                  data-timestamp={timeValue}
+                >
+                  {fullMatch}
+                </button>
+              );
+              
+              // Update remaining text to process
+              currentText = currentText.substring(matchIndex + fullMatch.length);
             }
           }
           
-          return result;
+          // Add any remaining text
+          if (currentText) {
+            segments.push(currentText);
+          }
+          
+          // Return processed segments if we found timestamps, otherwise return original text
+          return segments.length > 0 ? segments : child;
         });
         
         return <p {...props}>{processedChildren}</p>;
       },
+      
       // Style headings appropriately
       h2: ({ children }: any) => (
         <h2 className="text-lg font-bold mt-3 mb-2">{children}</h2>
@@ -174,13 +187,16 @@ export function ChatWindow({
       )
     };
     
+    // Ensure text is a string before passing to ReactMarkdown
+    const safeText = typeof text === 'string' ? text : '';
+    
     return (
       <div className="markdown-content space-y-1">
         <ReactMarkdown 
           remarkPlugins={[remarkGfm]}
           components={components}
         >
-          {processedText}
+          {safeText}
         </ReactMarkdown>
       </div>
     );

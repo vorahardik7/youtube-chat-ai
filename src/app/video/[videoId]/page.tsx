@@ -379,19 +379,37 @@ export default function VideoPage() {
             return;
         }
 
+        let totalSeconds = 0;
+        
+        // Check if the timeString is in MM:SS format
         const parts = timeString.match(/(\d{1,2}):(\d{2})/);
         if (parts) {
             const minutes = parseInt(parts[1], 10);
             const seconds = parseInt(parts[2], 10);
-            const totalSeconds = (minutes * 60) + seconds;
-            try {
-                player.seekTo(totalSeconds, true); // Seek and allow seek ahead
-                console.log(`Seeking to ${totalSeconds} seconds`);
-            } catch (e) {
-                console.error("Error seeking video:", e)
+            totalSeconds = (minutes * 60) + seconds;
+        } 
+        // Check if timeString is a numeric value (for TIMESTAMP_X format)
+        else if (!isNaN(Number(timeString))) {
+            // If it's a numeric string, convert to number
+            // The AI might be using seconds or milliseconds, so we need to handle both
+            const numericValue = Number(timeString);
+            
+            // If it's a large number, assume it's milliseconds and convert to seconds
+            if (numericValue > 1000) {
+                totalSeconds = Math.floor(numericValue / 1000);
+            } else {
+                totalSeconds = numericValue;
             }
         } else {
             console.warn("Could not parse timestamp:", timeString);
+            return;
+        }
+        
+        try {
+            player.seekTo(totalSeconds, true); // Seek and allow seek ahead
+            console.log(`Seeking to ${totalSeconds} seconds`);
+        } catch (e) {
+            console.error("Error seeking video:", e)
         }
     };
 

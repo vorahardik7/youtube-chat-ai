@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       model: MODEL_NAME,
       history: chatHistory,
       config: {
-        systemInstruction: `You are an AI assistant helping a user understand the YouTube video titled "${videoDetails.title}".
+        systemInstruction: `You are a helpful AI assistant chatting with a user about the YouTube video titled "${videoDetails.title}".
 
 VIDEO DETAILS:
 - Title: ${videoDetails.title}
@@ -55,12 +55,26 @@ VIDEO DETAILS:
 - Description: ${videoDetails.description} (May contain timestamps like [MM:SS] Topic)
 
 YOUR TASK:
-- Answer the user's questions about the video concisely and naturally.
-- Use information from the video description and any provided transcript snippets.
-- Refer to timestamps ([MM:SS]) when relevant to the user's query.
-- Use bullet points only if needed for lists or clarity. Avoid overly complex formatting.
-- If asked about a specific time, focus on what's likely happening then, using context.
-- If unsure, state that clearly.`,
+- Engage in a natural conversation about the video.
+- Answer the user's questions directly and concisely.
+- Use information from the video description and provided transcript snippets.
+- **Avoid repeating information** already discussed in the conversation history.
+
+TIMESTAMP FORMATTING - EXTREMELY IMPORTANT:
+- When referring to specific moments in the video, you MUST ONLY use the exact [MM:SS] format (e.g., [01:23], [00:45], [12:34]).
+- Example: If you are given context like "TRANSCRIPT SNIPPET AROUND [01:23]: The speaker discusses...", you MUST use [01:23] in your response if referring to that moment.
+- NEVER use any other format like 'TIMESTAMP_X', 'at X minutes', or any other variation.
+- NEVER use the word 'TIMESTAMP' in your responses at all.
+- If you're unsure about a specific timestamp, use the [MM:SS] format from the nearest known time.
+
+This timestamp formatting requirement is critical for the application to function correctly.
+
+If the user provides a timestamp like [MM:SS], focus your answer on the content around that specific time using the provided transcript snippets.
+
+- **Do not start your response with 'At [timestamp]'** unless absolutely necessary for clarity regarding a time-specific query.
+- Use bullet points sparingly, only for lists or clear organization.
+- If unsure about something or if the transcript doesn't cover a specific time, clearly state that.
+- Keep your tone friendly and helpful.`,
         maxOutputTokens: 1500,
         temperature: 0.3,
         topP: 0.8,
@@ -99,10 +113,10 @@ YOUR TASK:
       
       // Get snippets for each timestamp and combine them
       const snippets = uniqueTimestamps.map(ts => {
-        const formattedTime = formatTime(ts);
+        const formattedTime = formatTime(ts / 1000); // Corrected: Convert ms to seconds
         const snippet = getTranscriptSnippet(transcript, ts);
         // Add a marker for the specific timestamp within the snippet context
-        return snippet ? `TRANSCRIPT AROUND [${formattedTime}]:\n${snippet}\n(User is asking about [${formattedTime}])` : '';
+        return snippet ? `TRANSCRIPT SNIPPET AROUND [${formattedTime}]:\n"${snippet}"\n(This is the text around the time [${formattedTime}])` : '';
       }).filter(Boolean);
       
       if (snippets.length > 0) {
@@ -115,9 +129,6 @@ YOUR TASK:
     
     // Construct the context to send to the AI
     let fullContext = messageToSend;
-    if (timestamp !== undefined) {
-        fullContext += `\n(The user is specifically asking about the moment around [${formatTime(timestamp)}])`;
-    }
     if (transcriptContext) {
         fullContext += transcriptContext;
     }
@@ -137,22 +148,26 @@ YOUR TASK:
           // Process each chunk as it arrives
           for await (const chunk of streamingResponse) {
             if (chunk.text) {
-              // Append the new chunk to our accumulated text
-              responseText += chunk.text;
-              
-              // Send the chunk to the client
+              // No post-processing - send the raw chunk text directly from the AI
+              const rawChunkText = chunk.text;
+              responseText += rawChunkText; // Accumulate raw text
+
               controller.enqueue(
                 new TextEncoder().encode(
-                  JSON.stringify({ chunk: chunk.text, done: false })
+                  JSON.stringify({ chunk: rawChunkText, done: false }) // Send raw chunk
                 )
               );
             }
           }
 
+          // No final post-processing - use accumulated raw text
+          const finalRawResponse = responseText;
+
           // Send a final message indicating the stream is complete
           controller.enqueue(
             new TextEncoder().encode(
-              JSON.stringify({ chunk: '', done: true, fullResponse: responseText })
+              // Send accumulated raw response
+              JSON.stringify({ chunk: '', done: true, fullResponse: finalRawResponse })
             )
           );
 
@@ -194,7 +209,7 @@ YOUR TASK:
       statusCode = 400;
       errorCode = 'CONTENT_BLOCKED';
     } else if (error instanceof SyntaxError) {
-      errorMessage = "Invalid request format.";
+      errorMessage = "Invalid request for`mat.";
       statusCode = 400;
       errorCode = 'INVALID_FORMAT';
     } else if (error.message?.includes('rate') || error.message?.includes('quota') || error.message?.includes('limit')) {

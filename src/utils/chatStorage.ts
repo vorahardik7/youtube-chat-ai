@@ -23,7 +23,12 @@ export async function saveConversation(userId: string, videoId: string, videoTit
       .maybeSingle();
     
     if (findError) {
-      console.error('Error finding existing conversation:', findError);
+      console.error('Error finding existing conversation:', {
+        message: findError.message,
+        details: findError.details,
+        code: findError.code,
+        error: findError // Log the full object too
+      });
       throw findError;
     }
     
@@ -39,7 +44,12 @@ export async function saveConversation(userId: string, videoId: string, videoTit
         .select();
       
       if (updateError) {
-        console.error('Error updating conversation:', updateError);
+        console.error('Error updating conversation:', {
+          message: updateError.message,
+          details: updateError.details,
+          code: updateError.code,
+          error: updateError
+        });
         throw updateError;
       }
       
@@ -57,15 +67,25 @@ export async function saveConversation(userId: string, videoId: string, videoTit
         .select();
       
       if (insertError) {
-        console.error('Error inserting conversation:', insertError);
+        console.error('Error inserting conversation:', {
+          message: insertError.message,
+          details: insertError.details,
+          code: insertError.code,
+          error: insertError
+        });
         throw insertError;
       }
       
       console.log('Created conversation:', insertData?.[0]?.id);
       return insertData?.[0]?.id || null;
     }
-  } catch (error) {
-    console.error('Error saving conversation:', error);
+  } catch (error: any) { // Catch as 'any' to access potential properties
+    console.error('Error saving conversation:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      error: error // Log the full object
+    });
     return null;
   }
 }

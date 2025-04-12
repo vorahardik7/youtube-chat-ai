@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MessageSquare, AlertTriangle, Clock, Send } from 'lucide-react';
-import { motion } from 'motion/react';
+import { MessageSquare, AlertTriangle, Clock, Send, Sparkles, ChevronDown } from 'lucide-react';
 import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
 import { LoadingSpinner } from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
@@ -203,18 +202,20 @@ export function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full border-l border-slate-200 overflow-hidden">
+    <div className="flex flex-col h-full border-l border-slate-200 overflow-hidden bg-slate-50">
       {/* Chat Header */}
-      <div className="p-4 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
+      <div className="p-4 md:p-5 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between shadow-sm">
         <div>
-          <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-            <MessageSquare size={18} className="text-teal-600" />
+          <h2 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-r from-teal-400 to-teal-600 flex items-center justify-center">
+              <MessageSquare size={14} className="text-white" />
+            </div>
             <span>AI Chat Assistant</span>
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Ask about the video, mention timestamps like [MM:SS]</p>
+          <p className="text-sm text-slate-500 mt-1.5">Ask questions or reference specific moments with [MM:SS] timestamps</p>
         </div>
-        <div className="text-xs text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full">
-          <Clock size={12} />
+        <div className="text-xs font-medium text-slate-600 flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
+          <Clock size={12} className="text-teal-600" />
           <span>{playerReady ? formatTime(currentTimestamp) : '--:--'}</span>
         </div>
       </div>
@@ -222,31 +223,55 @@ export function ChatWindow({
       {/* Messages Area - Flexible height with scrolling */}
       <div 
         ref={chatContainerRef} 
-        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white scrollbar-thin"
+        className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-b from-slate-50 to-white scrollbar-thin"
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
           {isLoading && messages.length === 0 && (
             <div className="px-2">
+              <ChatMessageSkeleton />
               <ChatMessageSkeleton />
             </div>
           )}
           
           {!isLoading && messages.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                <MessageSquare size={20} className="text-slate-400" />
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
+              <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center mb-5 shadow-sm">
+                <Sparkles size={28} className="text-teal-500" />
               </div>
-              <p className="text-slate-500 text-sm">Start the conversation by asking a question!</p>
+              <h3 className="text-xl font-semibold text-slate-800 mb-3">Start a Conversation</h3>
+              <p className="text-slate-600 max-w-md">Ask any question about this video and get intelligent responses based on the content.</p>
+              <div className="mt-6 flex flex-col gap-3 w-full max-w-md">
+                <button 
+                  onClick={() => onSendMessage("What are the main points covered in this video?")}
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors text-left flex items-center shadow-sm"
+                >
+                  <ChevronDown size={16} className="mr-2 text-teal-500" />
+                  What are the main points covered in this video?
+                </button>
+                <button 
+                  onClick={() => onSendMessage("Can you summarize this video in 3 bullet points?")}
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors text-left flex items-center shadow-sm"
+                >
+                  <ChevronDown size={16} className="mr-2 text-teal-500" />
+                  Can you summarize this video in 3 bullet points?
+                </button>
+              </div>
             </div>
           )}
           
           {!isLoading && error && messages.length === 0 && !videoDetails && (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                <AlertTriangle size={20} className="text-red-400" />
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-2xl shadow-sm border border-red-100">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5 shadow-sm">
+                <AlertTriangle size={28} className="text-red-500" />
               </div>
-              <p className="text-red-600 text-sm">Could not initialize chat</p>
-              <p className="text-xs text-slate-500 mt-1">{error}</p>
+              <h3 className="text-xl font-semibold text-slate-800 mb-3">Error Loading Video</h3>
+              <p className="text-slate-600 mb-4 max-w-md">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors shadow-sm"
+              >
+                Try Again
+              </button>
             </div>
           )}
           
@@ -255,6 +280,7 @@ export function ChatWindow({
               key={message.id}
               user={message.user}
               isAi={message.isAi}
+              timestamp={message.timestamp ? formatTime(message.timestamp) : undefined}
             >
               {message.isStreaming ? (
                 <div className="flex flex-col gap-2">
@@ -269,13 +295,18 @@ export function ChatWindow({
               )}
             </ChatMessage>
           ))}
+          {isAiThinking && (
+            <div className="opacity-90">
+              <ChatMessageSkeleton />
+            </div>
+          )}
           <div ref={messagesEndRef} className="h-1"/> {/* Scroll anchor */}
         </div>
       </div>
 
       {/* Message Input Area */}
-      <div className="p-4 border-t border-slate-200 bg-white flex-shrink-0">
-        <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+      <div className="p-4 md:p-5 border-t border-slate-200 bg-white flex-shrink-0 shadow-md">
+        <form onSubmit={handleSubmit} className="flex gap-3 items-center max-w-3xl mx-auto">
           <div className="relative flex-1">
             <input
               type="text"
@@ -283,7 +314,7 @@ export function ChatWindow({
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               disabled={isLoading || !playerReady || isAiThinking} // Disable during AI thinking
-              className="w-full rounded-md border border-slate-300 px-4 py-2.5 pr-10 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
+              className="w-full rounded-full border border-slate-300 px-5 py-3 pr-12 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed shadow-sm"
               aria-label="Chat message input"
             />
             {/* Insert Timestamp Button */}
@@ -292,18 +323,16 @@ export function ChatWindow({
               title="Insert Current Timestamp"
               onClick={() => setNewMessage(prev => `${prev} [${formatTime(currentTimestamp)}]`)}
               disabled={isLoading || !playerReady || isAiThinking}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
               aria-label="Insert current video time"
             >
-              <Clock size={16} />
+              <Clock size={18} />
             </button>
           </div>
-          <motion.button
+          <button
             type="submit"
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
             disabled={!newMessage.trim() || isLoading || !playerReady || isAiThinking}
-            className="inline-flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white py-3 px-5 rounded-full font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md"
             aria-label="Send message"
           >
             {isAiThinking ? (
@@ -313,11 +342,11 @@ export function ChatWindow({
               </div>
             ) : (
               <>
-                <Send size={16} />
+                <Send size={18} />
                 <span className="hidden sm:inline">Send</span>
               </>
             )}
-          </motion.button>
+          </button>
         </form>
       </div>
     </div>

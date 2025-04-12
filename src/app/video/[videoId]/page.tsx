@@ -477,56 +477,104 @@ export default function VideoPage() {
                 {/* Video Column */}
                 <div className="bg-slate-50 p-4 flex flex-col overflow-y-auto">
                     {/* YouTube Player Container */}
-                    <div className="aspect-video bg-black rounded-lg overflow-hidden relative shadow-md mb-4 sticky top-4 z-5">
+                    <div className="aspect-video bg-black rounded-xl overflow-hidden relative shadow-lg mb-6 sticky top-4 z-5 border border-slate-800">
                         {!videoId ? (
-                             <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
-                                <p className="text-slate-400 text-center px-4">No Video ID provided.</p>
+                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 p-6">
+                                <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+                                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                                    </svg>
+                                </div>
+                                <p className="text-slate-400 text-center px-4 font-medium">No Video ID provided</p>
+                                <Link href="/" className="mt-4 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-full text-sm transition-colors">
+                                    Go to Home
+                                </Link>
                             </div>
                         ) : error && !player ? ( // Show player error only if player itself failed, not just details loading
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-100 text-red-700 p-4">
-                                <AlertTriangle size={32} className="mb-2" />
-                                <p className="text-center font-medium">Player Error</p>
-                                <p className="text-center text-sm mt-1">{error}</p>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-red-100 text-red-700 p-6">
+                                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 shadow-sm">
+                                    <AlertTriangle size={32} className="text-red-500" />
+                                </div>
+                                <h3 className="text-center font-bold text-lg mb-2">Player Error</h3>
+                                <p className="text-center text-sm max-w-md">{error}</p>
+                                <button 
+                                    onClick={() => window.location.reload()} 
+                                    className="mt-4 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                                >
+                                    Try Again
+                                </button>
                             </div>
                         ) : ( // Render player if we have an ID and no critical player error
-                            <YouTube
-                                videoId={videoId}
-                                opts={playerOpts}
-                                onReady={handlePlayerReady}
-                                onStateChange={handlePlayerStateChange}
-                                onError={handlePlayerError}
-                                className="absolute top-0 left-0 w-full h-full"
-                            />
+                            <div className="relative w-full h-full">
+                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent z-10 pointer-events-none"></div>
+                                <YouTube
+                                    videoId={videoId}
+                                    opts={playerOpts}
+                                    onReady={handlePlayerReady}
+                                    onStateChange={handlePlayerStateChange}
+                                    onError={handlePlayerError}
+                                    className="absolute top-0 left-0 w-full h-full"
+                                />
+                                {currentTimestamp > 0 && (
+                                    <div className="absolute bottom-4 right-4 z-10 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium">
+                                        {formatTime(currentTimestamp)}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 
                     {/* Video Info Section */}
-                    <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm mt-8 flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-md mt-8 flex-shrink-0">
                         {isLoading && ( // Show skeleton only during initial load
-                            <div className="animate-pulse space-y-3">
-                                <div className="h-5 bg-slate-200 rounded w-3/4"></div>
-                                <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-                                <div className="h-3 bg-slate-200 rounded w-full mt-3"></div>
-                                <div className="h-3 bg-slate-200 rounded w-5/6"></div>
+                            <div className="animate-pulse space-y-4">
+                                <div className="h-6 bg-slate-200 rounded-full w-3/4"></div>
+                                <div className="h-5 bg-slate-200 rounded-full w-1/2"></div>
+                                <div className="flex gap-2 mt-2">
+                                    <div className="h-8 w-8 bg-slate-200 rounded-full"></div>
+                                    <div className="h-8 bg-slate-200 rounded-full w-1/3"></div>
+                                </div>
+                                <div className="h-24 bg-slate-100 rounded-lg w-full mt-3"></div>
                             </div>
                         )}
                         {/* Show details error if details failed *and* not loading */}
                         {!isLoading && error && !videoDetails && (
-                             <div className="flex items-start gap-2 text-red-600 p-2 bg-red-50 rounded-lg">
-                                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                                <p className="text-sm">Could not load video information: {error}</p>
+                             <div className="flex items-start gap-3 text-red-600 p-4 bg-red-50 rounded-lg border border-red-100">
+                                <div className="p-2 bg-red-100 rounded-full">
+                                    <AlertTriangle size={18} className="flex-shrink-0 text-red-500" />
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-red-700 mb-1">Error Loading Video</h3>
+                                    <p className="text-sm text-red-600">{error}</p>
+                                </div>
                              </div>
                         )}
                         {videoDetails && (
                             <>
-                                <h2 className="font-semibold text-slate-800 text-base md:text-lg">{videoDetails.title}</h2>
-                                <p className="text-sm text-slate-500 mt-1">{videoDetails.channelTitle}</p>
+                                <h2 className="font-bold text-slate-800 text-lg md:text-xl leading-tight">{videoDetails.title}</h2>
+                                <div className="flex flex-wrap items-center gap-3 mt-3">
+                                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full">
+                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                                            <span className="text-white text-xs font-bold">C</span>
+                                        </div>
+                                        <p className="text-sm font-medium text-slate-700">{videoDetails.channelTitle}</p>
+                                    </div>
+                                    <p className="text-xs text-slate-500 px-2 py-1 bg-slate-50 rounded-full border border-slate-200">
+                                        {videoDetails.publishedAt ? new Date(videoDetails.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Date unavailable'}
+                                    </p>
+                                </div>
                                 {videoDetails.description && (
-                                    <details open className="mt-3 text-sm text-slate-600 flex flex-col flex-grow">
-                                        <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium mb-2">
-                                            Video Description
+                                    <details open className="mt-4 text-sm text-slate-600 flex flex-col flex-grow">
+                                        <summary className="cursor-pointer text-slate-600 hover:text-teal-600 font-medium mb-3 flex items-center gap-2 w-fit transition-colors">
+                                            <span>Video Description</span>
+                                            <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 details-marker">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                                </svg>
+                                            </div>
                                         </summary>
-                                        <div className="bg-slate-50 p-3 rounded-md border border-slate-200 flex-grow overflow-auto h-[250px]">
+                                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex-grow overflow-auto max-h-[250px] shadow-inner">
                                             <p className="whitespace-pre-wrap scrollbar-thin">
                                                 {videoDetails.description}
                                             </p>

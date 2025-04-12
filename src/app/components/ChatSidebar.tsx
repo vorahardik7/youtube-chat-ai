@@ -4,9 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { getUserConversations, deleteConversation, Conversation } from '@/utils/chatStorage';
-import { Clock, MessageSquare, ChevronLeft, X, Trash2 } from 'lucide-react';
+import { Clock, MessageSquare, ChevronLeft, X, Trash2, Youtube, Search, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 
 interface ChatSidebarProps {
@@ -59,51 +58,80 @@ export function ChatSidebar({ currentVideoId, isOpen, onClose }: ChatSidebarProp
 
   return (
     <>
+      {/* Sidebar Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/30 z-30 md:hidden" 
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      
       {/* Sidebar */}
-      <motion.div 
-        className="fixed top-0 left-0 h-full bg-white border-r border-slate-200 shadow-lg z-40 overflow-hidden"
-        initial={{ width: 0, opacity: 0, x: -300 }}
-        animate={{ 
-          width: isOpen ? 300 : 0,
-          opacity: isOpen ? 1 : 0,
-          x: isOpen ? 0 : -300
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
+      <div 
+        className={`fixed top-0 left-0 h-full bg-white border-r border-slate-200 shadow-xl z-40 overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0 w-[320px]' : '-translate-x-full w-0'}`}
       >
         <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800">Your Conversations</h2>
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+            <h2 className="font-bold text-slate-800 flex items-center gap-2">
+              <Youtube size={18} className="text-teal-600" />
+              <span>Your Video Chats</span>
+            </h2>
             <button 
               onClick={onClose}
-              className="p-1 rounded-full hover:bg-slate-100"
+              className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
               aria-label="Close sidebar"
             >
               <X size={20} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Search bar */}
+          <div className="p-3 border-b border-slate-100">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-slate-400" />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search conversations..." 
+                className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3">
             {isLoading ? (
-              <div className="flex justify-center p-8">
-                <div className="w-6 h-6 border-2 border-slate-200 border-t-teal-600 rounded-full animate-spin"></div>
+              <div className="flex justify-center items-center h-32">
+                <div className="w-8 h-8 border-2 border-slate-200 border-t-teal-600 rounded-full animate-spin"></div>
               </div>
             ) : conversations.length === 0 ? (
-              <div className="text-center text-slate-500 p-8">
-                <MessageSquare size={24} className="mx-auto mb-2 text-slate-400" />
-                <p>No conversations yet</p>
+              <div className="text-center text-slate-500 p-8 bg-slate-50 rounded-xl border border-slate-100 my-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare size={24} className="text-slate-400" />
+                </div>
+                <h3 className="font-medium text-slate-700 mb-2">No conversations yet</h3>
+                <p className="text-sm text-slate-500 mb-4">Your chat history with videos will appear here</p>
+                <Link 
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 bg-teal-50 hover:bg-teal-100 text-teal-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Plus size={16} />
+                  Start a new chat
+                </Link>
               </div>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {conversations.map(conv => (
                   <li key={conv.id}>
                     <div className="relative group">
                       <Link 
                         href={`/video/${conv.videoId}`}
-                        className={`block p-3 rounded-lg hover:bg-slate-50 transition-colors ${currentVideoId === conv.videoId ? 'bg-teal-50 border border-teal-100' : 'border border-slate-100'}`}
+                        className={`block p-4 rounded-xl hover:bg-slate-50 transition-colors ${currentVideoId === conv.videoId ? 'bg-teal-50 border border-teal-100 shadow-sm' : 'bg-white border border-slate-100 shadow-sm'}`}
                       >
-                        <h3 className="font-medium text-slate-800 truncate pr-6">{conv.videoTitle}</h3>
-                        <div className="flex items-center text-xs text-slate-500 mt-1">
-                          <Clock size={12} className="mr-1" />
+                        <h3 className="font-medium text-slate-800 truncate pr-6 line-clamp-2">{conv.videoTitle}</h3>
+                        <div className="flex items-center text-xs text-slate-500 mt-2 bg-white/80 w-fit px-2 py-1 rounded-full">
+                          <Clock size={12} className="mr-1.5 text-teal-500" />
                           <span>{new Date(conv.lastUpdatedAt).toLocaleString()}</span>
                         </div>
                       </Link>
@@ -111,7 +139,7 @@ export function ChatSidebar({ currentVideoId, isOpen, onClose }: ChatSidebarProp
                       <button
                         onClick={(e) => handleDeleteConversation(conv.id, e)}
                         disabled={isDeleting}
-                        className="absolute right-2 top-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all duration-200"
+                        className="absolute right-3 top-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all duration-200"
                         aria-label="Delete conversation"
                       >
                         <Trash2 size={16} />
@@ -122,8 +150,15 @@ export function ChatSidebar({ currentVideoId, isOpen, onClose }: ChatSidebarProp
               </ul>
             )}
           </div>
+          
+          {/* Footer */}
+          <div className="p-4 border-t border-slate-200 bg-slate-50">
+            <div className="text-xs text-center text-slate-500">
+              <p>VideoChat AI &copy; {new Date().getFullYear()}</p>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </div>
     </>
   );
 }

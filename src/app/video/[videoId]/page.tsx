@@ -491,7 +491,7 @@ export default function VideoPage() {
                 </div>
 
                 {/* Chat Column */}
-                <div className="relative">
+                <div className="relative h-full overflow-hidden">
                     <ChatWindow 
                         messages={messages}
                         isLoading={isLoading || isLoadingHistory}

@@ -14,8 +14,24 @@ interface CachedTranscript {
 const transcriptCache = new Map<string, CachedTranscript>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
+// Track rate limiting for transcript API
+interface RateLimitTracker {
+  lastRequestTime: number;
+  requestCount: number;
+  resetTime: number;
+}
+
+const rateLimitTracker: RateLimitTracker = {
+  lastRequestTime: 0,
+  requestCount: 0,
+  resetTime: Date.now() + 60000 // Reset after 1 minute initially
+};
+
+// Maximum requests per minute to avoid rate limiting
+const MAX_REQUESTS_PER_MINUTE = 10;
+
 /**
- * Fetch transcript for a YouTube video and cache it
+ * Fetch transcript for a YouTube video and cache it with rate limiting and retries
  */
 export async function getTranscript(videoId: string): Promise<TranscriptEntry[] | null> {
   // Check if we have a valid cached transcript
@@ -27,27 +43,84 @@ export async function getTranscript(videoId: string): Promise<TranscriptEntry[] 
     return cached.entries;
   }
   
-  // Fetch new transcript
-  try {
-    console.log(`Fetching transcript for video ${videoId}`);
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-    
-    if (!transcript || transcript.length === 0) {
-      console.log(`No transcript available for video ${videoId}`);
-      return null;
-    }
-    
-    // Cache the transcript
-    transcriptCache.set(videoId, {
-      entries: transcript,
-      timestamp: now
-    });
-    
-    return transcript;
-  } catch (error) {
-    console.error(`Error fetching transcript for video ${videoId}:`, error);
-    return null;
+  // Check rate limiting
+  if (now > rateLimitTracker.resetTime) {
+    // Reset counter if we're past the reset time
+    rateLimitTracker.requestCount = 0;
+    rateLimitTracker.resetTime = now + 60000; // Reset after 1 minute
   }
+  
+  if (rateLimitTracker.requestCount >= MAX_REQUESTS_PER_MINUTE) {
+    // Calculate time to wait before next request
+    const timeToWait = rateLimitTracker.resetTime - now;
+    if (timeToWait > 0) {
+      console.log(`Rate limit reached for transcript API. Waiting ${timeToWait}ms before retrying.`);
+      // Wait until reset time
+      await new Promise(resolve => setTimeout(resolve, timeToWait + 100)); // Add 100ms buffer
+      // Recursively call this function after waiting
+      return getTranscript(videoId);
+    }
+  }
+  
+  // Implement retry logic
+  const MAX_RETRIES = 3;
+  let retries = 0;
+  let lastError: any = null;
+  
+  while (retries < MAX_RETRIES) {
+    try {
+      // Update rate limit tracking
+      rateLimitTracker.lastRequestTime = Date.now();
+      rateLimitTracker.requestCount++;
+      
+      console.log(`Fetching transcript for video ${videoId} (attempt ${retries + 1}/${MAX_RETRIES})`);
+      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      
+      if (!transcript || transcript.length === 0) {
+        console.log(`No transcript available for video ${videoId}`);
+        return null;
+      }
+      
+      // Cache the transcript
+      transcriptCache.set(videoId, {
+        entries: transcript,
+        timestamp: now
+      });
+      
+      return transcript;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if this is a rate limiting or temporary error
+      const errorMessage = error?.message || '';
+      const isRateLimited = 
+        errorMessage.includes('rate') || 
+        errorMessage.includes('429') || 
+        errorMessage.includes('too many');
+        
+      const isTemporaryError = 
+        errorMessage.includes('timeout') || 
+        errorMessage.includes('network') || 
+        errorMessage.includes('temporary');
+      
+      if (isRateLimited || isTemporaryError) {
+        retries++;
+        if (retries < MAX_RETRIES) {
+          // Exponential backoff: wait 2^retries * 500ms before retrying
+          const delay = Math.pow(2, retries) * 500;
+          console.log(`Retrying transcript fetch in ${delay}ms (attempt ${retries}/${MAX_RETRIES})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      } else {
+        // Don't retry for other errors
+        break;
+      }
+    }
+  }
+  
+  console.error(`Error fetching transcript for video ${videoId}:`, lastError);
+  return null;
 }
 
 /**

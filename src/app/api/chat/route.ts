@@ -47,57 +47,20 @@ export async function POST(request: NextRequest) {
       model: MODEL_NAME,
       history: chatHistory,
       config: {
-        systemInstruction: `You are an AI assistant specialized in analyzing and discussing YouTube video content. You're helping a user understand the YouTube video titled "${videoDetails.title}".
+        systemInstruction: `You are an AI assistant helping a user understand the YouTube video titled "${videoDetails.title}".
 
 VIDEO DETAILS:
 - Title: ${videoDetails.title}
 - Video ID: ${videoId}
-- Description: ${videoDetails.description}
+- Description: ${videoDetails.description} (May contain timestamps like [MM:SS] Topic)
 
-INFORMATION EXTRACTION:
-- The video description may contain timestamps with topics ([MM:SS] Topic). Use these to understand the video structure.
-- Look for patterns like "[04:18] Tariff Day's Price Tag" which indicate the beginning of a segment.
-- Use these timestamps to infer what content is being discussed at any point in the video.
-- When answering questions about a specific timestamp, check if it falls within a known segment based on the description.
-- Extract key numbers, names, and facts from the description to include in your answers.
-
-RESPONSE GUIDELINES:
-1. PROVIDE DETAILED ANSWERS: Give comprehensive explanations about the video content when asked about specific parts or topics.
-2. ORGANIZE YOUR RESPONSES: Use markdown formatting with headings (##), bullet points, and paragraphs to make your responses easy to read.
-3. HIGHLIGHT KEY INFORMATION: Bold (*text*) important points, numbers, and facts discussed in the video.
-4. TIMESTAMP PRECISION: When referring to timestamps, use the [MM:SS] format and be specific about what happens at that moment in the video.
-5. QUOTE THE VIDEO: When possible, include what was actually said at specific timestamps.
-6. INTELLIGENT INFERENCE: If asked about a timestamp, use the context of the entire video to provide meaningful insights.
-7. BE CONVERSATIONAL: Maintain a helpful, engaging tone while providing authoritative information.
-
-TIMESTAMP QUESTIONS:
-- When asked about a specific timestamp, assume it's a key moment in the video.
-- Infer the likely topic being discussed based on the overall context and structure of the video.
-- Use format: "## At [MM:SS]" as a heading when answering timestamp questions.
-- Include a brief analysis of what might have been said immediately before and after the timestamp.
-- If you identify that the timestamp is part of a larger segment (like "Tariff Day's Price Tag"), mention the segment context.
-- For financial or numerical discussions, highlight the specific numbers being mentioned.
-
-FORMATTING EXAMPLES:
-For timestamp questions:
-\`\`\`
-## At [04:32] - Tariff Impact Analysis
-
-At this point in the video, they're discussing the *economic impact of tariffs* introduced by the Trump administration. The speaker is likely explaining:
-
-* The *$3,600 cost* per household that economists have calculated
-* How the tariffs specifically affect certain industries
-* The potential impact on Tesla and other companies
-
-This is part of the larger "Tariff Day's Price Tag" segment mentioned at [04:18].
-\`\`\`
-
-TECHNICAL NOTES:
-- You don't have direct access to the video's visual or audio content beyond what's in the description and conversation history.
-- Format any timestamps as [MM:SS] to make them clickable for the user.
-- When the user asks about specific sections or timestamps, focus your answer on that particular moment while providing context.
-
-If you're uncertain about specific details, acknowledge your limitations but provide your best analysis based on available information.`,
+YOUR TASK:
+- Answer the user's questions about the video concisely and naturally.
+- Use information from the video description and any provided transcript snippets.
+- Refer to timestamps ([MM:SS]) when relevant to the user's query.
+- Use bullet points only if needed for lists or clarity. Avoid overly complex formatting.
+- If asked about a specific time, focus on what's likely happening then, using context.
+- If unsure, state that clearly.`,
         maxOutputTokens: 1500,
         temperature: 0.3,
         topP: 0.8,
@@ -138,7 +101,8 @@ If you're uncertain about specific details, acknowledge your limitations but pro
       const snippets = uniqueTimestamps.map(ts => {
         const formattedTime = formatTime(ts);
         const snippet = getTranscriptSnippet(transcript, ts);
-        return snippet ? `TRANSCRIPT AROUND [${formattedTime}]:\n${snippet}\n` : '';
+        // Add a marker for the specific timestamp within the snippet context
+        return snippet ? `TRANSCRIPT AROUND [${formattedTime}]:\n${snippet}\n(User is asking about [${formattedTime}])` : '';
       }).filter(Boolean);
       
       if (snippets.length > 0) {
@@ -146,28 +110,16 @@ If you're uncertain about specific details, acknowledge your limitations but pro
       }
     }
     
+    // Keep the user message simple
     let messageToSend = userMessage;
+    
+    // Construct the context to send to the AI
+    let fullContext = messageToSend;
     if (timestamp !== undefined) {
-      messageToSend = `${userMessage}
-
-I'm at timestamp [${formatTime(timestamp)}] in the video. Please provide a detailed analysis of what's being discussed at this exact moment. 
-
-Remember to:
-1. Use the heading format "## At [${formatTime(timestamp)}] - Topic"
-2. Explain the specific topic being covered at this timestamp
-3. Include any numbers, statistics, or key facts mentioned
-4. Highlight the most important points with bold formatting
-5. Place this moment in the context of the broader video segment`;
+        fullContext += `\n(The user is specifically asking about the moment around [${formatTime(timestamp)}])`;
     }
-
-    // Add transcript context to the system instruction if available
     if (transcriptContext) {
-      // Update the system instruction with transcript context
-      await chat.sendMessage({
-        message: `ADDITIONAL CONTEXT: ${transcriptContext}
-
-Please use this transcript information to enhance your responses. When answering questions about specific timestamps, refer to what was actually said in the transcript.`
-      });
+        fullContext += transcriptContext;
     }
     
     // Create a new ReadableStream for streaming the response
@@ -176,7 +128,7 @@ Please use this transcript information to enhance your responses. When answering
         try {
           // Use streaming API
           const streamingResponse = await chat.sendMessageStream({
-            message: messageToSend,
+            message: fullContext, // Send the combined context
           });
 
           // Initialize a variable to accumulate the response text
@@ -234,20 +186,54 @@ Please use this transcript information to enhance your responses. When answering
     console.error('Error calling Gemini API:', error);
     let errorMessage = 'Failed to get response from AI assistant.';
     let statusCode = 500;
+    let errorCode = 'UNKNOWN_ERROR';
 
-     if (error.message?.includes('blocked') || error.response?.promptFeedback?.blockReason) {
-         errorMessage = "The response was blocked due to safety settings.";
-         statusCode = 400; // Or another appropriate code
-     } else if (error instanceof SyntaxError) {
-        errorMessage = "Invalid request format.";
-        statusCode = 400;
-     } else if (error.message) {
-        errorMessage = error.message;
-     }
+    // Handle different types of errors
+    if (error.message?.includes('blocked') || error.response?.promptFeedback?.blockReason) {
+      errorMessage = "The response was blocked due to safety settings.";
+      statusCode = 400;
+      errorCode = 'CONTENT_BLOCKED';
+    } else if (error instanceof SyntaxError) {
+      errorMessage = "Invalid request format.";
+      statusCode = 400;
+      errorCode = 'INVALID_FORMAT';
+    } else if (error.message?.includes('rate') || error.message?.includes('quota') || error.message?.includes('limit')) {
+      // Rate limit or quota exceeded
+      errorMessage = "AI service rate limit reached. Please try again in a moment.";
+      statusCode = 429;
+      errorCode = 'RATE_LIMITED';
+    } else if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+      // Request timeout
+      errorMessage = "The AI service took too long to respond. Please try again.";
+      statusCode = 408;
+      errorCode = 'TIMEOUT';
+    } else if (error.message?.includes('token') || error.message?.includes('credential') || error.message?.includes('auth')) {
+      // Authentication issues
+      errorMessage = "There was an authentication issue with the AI service.";
+      statusCode = 401;
+      errorCode = 'AUTH_ERROR';
+      console.error('Authentication error with Gemini API - check your API key configuration');
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    // Add retry-after header for rate limits
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (statusCode === 429) {
+      // Suggest client retry after 10 seconds
+      headers['Retry-After'] = '10';
+    }
 
     return new Response(
-      JSON.stringify({ message: errorMessage }),
-      { status: statusCode, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        message: errorMessage,
+        error: errorCode,
+        retryable: statusCode === 429 || statusCode === 408 || statusCode === 500
+      }),
+      { status: statusCode, headers }
     );
   }
 }

@@ -143,9 +143,6 @@ export default function HomePage() {
           </div>
         </SignedOut>
 
-        <p className="text-sm text-center text-slate-500 mt-8">
-          © 2024 YouTube AI Chat. All rights reserved.
-        </p>
       </div>
     </div>
   );

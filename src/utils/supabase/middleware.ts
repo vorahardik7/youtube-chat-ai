@@ -1,7 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function updateSession(request: NextRequest) {
+// Define a return type for updateSession
+type UpdateSessionResult = {
+  supabase: ReturnType<typeof createServerClient>;
+  response: NextResponse;
+}
+
+export async function updateSession(request: NextRequest): Promise<UpdateSessionResult> {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -48,10 +54,10 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+  // IMPORTANT: Avoid writing any logic between createServerClient and return
+  // that might interfere with cookie handling.
   await supabase.auth.getUser()
 
-  return supabaseResponse
+  // Return both the client and the response
+  return { supabase, response: supabaseResponse };
 }

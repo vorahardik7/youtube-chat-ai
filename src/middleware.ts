@@ -1,9 +1,26 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  // update user's auth session
-  return await updateSession(request)
+  // Update session and get the response with updated cookies
+  const { supabase, response } = await updateSession(request);
+
+  // Check user session
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // If user is not logged in and trying to access a protected route (e.g., /video/*)
+  if (!user && pathname.startsWith('/video/')) {
+    // Redirect to homepage or a specific login page
+    const url = request.nextUrl.clone();
+    url.pathname = '/'; 
+    url.search = ''; // Clear any search params if redirecting
+    return NextResponse.redirect(url);
+  }
+
+  // Allow the request to proceed for logged-in users or non-protected routes
+  return response;
 }
 
 export const config = {

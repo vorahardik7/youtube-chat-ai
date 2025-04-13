@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/contexts/AuthContext'; 
 import { getUserConversations, deleteConversation, Conversation } from '@/utils/chatStorage';
 import Link from 'next/link';
 import { Clock, MessageSquare, Youtube, Trash2 } from 'lucide-react';
@@ -12,16 +12,21 @@ export function RecentConversationsGrid() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { user, isSignedIn } = useUser();
+  const { user, session } = useAuth(); 
+  const isSignedIn = !!user && !!session;
 
   useEffect(() => {
     async function loadConversations() {
-      if (!isSignedIn || !user) return;
-      
-      setIsLoading(true);
-      const userConversations = await getUserConversations(user.id);
-      setConversations(userConversations);
-      setIsLoading(false);
+      if (isSignedIn && user?.id) { 
+        setIsLoading(true);
+        try {
+          const userConversations = await getUserConversations(user.id);
+          setConversations(userConversations);
+          setIsLoading(false);
+        } catch (error) {
+          console.error(error);
+        }
+      }
     }
     
     loadConversations();

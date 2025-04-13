@@ -4,20 +4,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { motion } from 'motion/react'; 
-import { MessageSquare, Search, ArrowRight } from 'lucide-react';
+import { MessageSquare, Search, ArrowRight, LogIn } from 'lucide-react';
 import { NavBar } from '@/app/components/NavBar'; 
 import { RecentConversationsGrid } from '@/app/components/RecentConversationsGrid';
-import { SignedIn, SignedOut, useUser, SignInButton } from '@clerk/nextjs';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function HomePage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-  const { } = useUser();
+  const { user, isLoading: isAuthLoading, session, signInWithGoogle } = useAuth();
+  const isSignedIn = !!user && !!session;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(''); 
+    setError('');
 
     const videoId = extractVideoId(videoUrl);
     if (videoId) {
@@ -34,7 +35,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white text-slate-900">
       <NavBar /> 
 
       <div className="container mx-auto px-4 pt-16 pb-16 max-w-3xl">
@@ -53,96 +54,66 @@ export default function HomePage() {
           </p>
         </div>
 
-        <SignedIn>
-          {/* Video URL Input Form for Signed In Users */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm mb-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="video-url" className="block text-sm font-medium text-slate-700 mb-2">
-                  Enter YouTube Video URL
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                    <Search className="h-5 w-5" />
+        {isAuthLoading ? (
+          <div className="mt-12 text-center text-slate-500">Loading...</div>
+        ) : isSignedIn ? (
+          <div>
+            {/* Video URL Input Form for Signed In Users */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm mb-8">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label htmlFor="video-url" className="block text-sm font-medium text-slate-700 mb-2">
+                    Enter YouTube Video URL
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                      <Search className="h-5 w-5" />
+                    </div>
+                    <input
+                      id="video-url"
+                      type="url"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      className="w-full rounded-md border border-slate-300 pl-10 py-2.5 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      required
+                      aria-label="YouTube Video URL Input"
+                    />
                   </div>
-                  <input
-                    id="video-url"
-                    type="url"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 pl-10 py-2.5 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                    required
-                    aria-label="YouTube Video URL Input"
-                  />
+                  {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                 </div>
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-              </div>
 
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-150"
-                aria-label="Watch and Chat about the video"
-              >
-                Watch and Chat
-                <ArrowRight size={16} />
-              </motion.button>
-            </form>
-          </div>
-          
-          {/* Recent Conversations Grid */}
-          <RecentConversationsGrid />
-        </SignedIn>
-        
-        <SignedOut>
-          {/* Simple explanation and CTA for non-signed in users */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm mb-8">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">How it works</h2>
-            
-            <ol className="list-decimal pl-5 text-slate-600 space-y-3 mb-6">
-              <li>Sign in with your Google account</li>
-              <li>Paste any YouTube video URL</li>
-              <li>Watch the video and chat with our AI</li>
-              <li>Get instant answers about video content</li>
-              <li>Reference specific times using [MM:SS] format</li>
-            </ol>
-            
-            <div className="mt-6 text-center">
-              <SignInButton mode="modal">
-                <button className="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-5 rounded-md font-medium transition-colors duration-150">
-                  Sign in with Google
-                </button>
-              </SignInButton>
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-2.5 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-150"
+                  aria-label="Watch and Chat about the video"
+                >
+                  Watch and Chat
+                  <ArrowRight size={16} />
+                </motion.button>
+              </form>
             </div>
-          </div>
-          
-          {/* Simple benefits section */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">Why use YouTube AI Chat?</h2>
             
-            <ul className="space-y-3 text-slate-600">
-              <li className="flex items-start">
-                <span className="text-teal-600 mr-2">•</span>
-                <span>Get instant answers about video content</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-teal-600 mr-2">•</span>
-                <span>Navigate to specific timestamps with one click</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-teal-600 mr-2">•</span>
-                <span>Ask follow-up questions for deeper understanding</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-teal-600 mr-2">•</span>
-                <span>Learn more efficiently from educational content</span>
-              </li>
-            </ul>
+            {/* Recent Conversations Grid */}
+            <RecentConversationsGrid />
           </div>
-        </SignedOut>
-
+        ) : (
+          <div className="mt-12 text-center bg-white p-8 rounded-lg shadow-md border border-slate-200 max-w-md mx-auto">
+            <h2 className="text-xl font-semibold text-slate-800 mb-3">Sign In Required</h2>
+            <p className="text-slate-600 mb-6">
+              Please sign in with your Google account to view your chat history and start new conversations.
+            </p>
+            <button 
+              onClick={signInWithGoogle}
+              className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-6 py-3 rounded-full text-base font-medium transition-colors flex items-center justify-center gap-2 shadow-md w-full sm:w-auto mx-auto"
+            >
+              <LogIn size={20} />
+              Sign in with Google
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

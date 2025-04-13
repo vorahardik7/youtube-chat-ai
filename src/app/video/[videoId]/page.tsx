@@ -9,7 +9,7 @@ import { ChatWindow } from '@/app/components/ChatWindow';
 import { NavBar } from '@/app/components/NavBar';
 import YouTube, { YouTubeEvent, YouTubeProps, YouTubePlayer } from 'react-youtube';
 import { formatTime } from '@/utils/formatters';
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 import { saveConversation, saveMessage, getConversationMessages } from '@/utils/chatStorage';
 import { Message, VideoDetails } from '@/types';
 
@@ -17,7 +17,8 @@ import { Message, VideoDetails } from '@/types';
 export default function VideoPage() {
     const params = useParams();
     const videoId = Array.isArray(params.videoId) ? params.videoId[0] : params.videoId;
-    const { user, isSignedIn } = useUser();
+    const { user, session } = useAuth(); // Use Supabase auth context
+    const isSignedIn = !!user && !!session; // Check for both user and session
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);

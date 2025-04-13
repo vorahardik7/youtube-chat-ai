@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from '@clerk/nextjs'
+import { AuthProvider } from '@/contexts/AuthContext'; 
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react"
 
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <AuthProvider>
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -35,6 +35,6 @@ export default function RootLayout({
         <Analytics />
       </body>
     </html>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }

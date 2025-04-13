@@ -23,12 +23,7 @@ export async function saveConversation(userId: string, videoId: string, videoTit
       .maybeSingle();
     
     if (findError) {
-      console.error('Error finding existing conversation:', {
-        message: findError.message,
-        details: findError.details,
-        code: findError.code,
-        error: findError // Log the full object too
-      });
+      console.error('Error finding existing conversation:', findError); // Log the full error
       throw findError;
     }
     
@@ -44,12 +39,7 @@ export async function saveConversation(userId: string, videoId: string, videoTit
         .select();
       
       if (updateError) {
-        console.error('Error updating conversation:', {
-          message: updateError.message,
-          details: updateError.details,
-          code: updateError.code,
-          error: updateError
-        });
+        console.error('Error updating conversation:', updateError); // Log the full error
         throw updateError;
       }
       
@@ -67,26 +57,15 @@ export async function saveConversation(userId: string, videoId: string, videoTit
         .select();
       
       if (insertError) {
-        console.error('Error inserting conversation:', {
-          message: insertError.message,
-          details: insertError.details,
-          code: insertError.code,
-          error: insertError
-        });
+        console.error('Error inserting conversation:', insertError); // Log the full error
         throw insertError;
       }
       
       console.log('Created conversation:', insertData?.[0]?.id);
       return insertData?.[0]?.id || null;
     }
-  } catch (error: unknown) { // Use unknown instead of any for better type safety
-    const errorObj = error as Record<string, unknown>;
-    console.error('Error saving conversation:', {
-      message: errorObj.message,
-      code: errorObj.code,
-      details: errorObj.details,
-      error: error // Log the full object
-    });
+  } catch (error: unknown) { 
+    console.error('Error saving conversation:', error); // Log the full error
     return null;
   }
 }
@@ -101,7 +80,7 @@ export async function deleteConversation(conversationId: string): Promise<boolea
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error deleting conversation:', error);
+    console.error('Error deleting conversation:', error); // Log the full error
     return false;
   }
 }
@@ -163,7 +142,7 @@ export async function saveMessage(conversationId: string, message: Message): Pro
             }
           }
           
-          console.error('Error inserting message:', error);
+          console.error('Error inserting message:', error); // Log the full error
           throw error;
         }
         
@@ -188,10 +167,18 @@ export async function saveMessage(conversationId: string, message: Message): Pro
       }
     }
     
-    console.error('Error saving message after retries:', lastError);
+    console.error('Error saving message after retries:', lastError); // Log the full error
+    console.error("Error saving message:", lastError);
+    if (lastError instanceof Error) {
+      console.error("Detailed Error:", JSON.stringify(lastError, null, 2));
+    }
     return false;
   } catch (error) {
-    console.error('Error saving message:', error);
+    console.error('Error saving message:', error); // Log the full error
+    console.error("Error saving message:", error);
+    if (error instanceof Error) {
+      console.error("Detailed Error:", JSON.stringify(error, null, 2));
+    }
     return false;
   }
 }
@@ -225,7 +212,7 @@ export async function getUserConversations(
       .range(offset, offset + safeLimit - 1);
     
     if (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('Error fetching conversations:', error); // Log the full error
       return [];
     }
     
@@ -256,7 +243,7 @@ export async function getUserConversations(
       lastUpdatedAt: conv.last_updated_at
     }));
   } catch (error) {
-    console.error('Error in getUserConversations:', error);
+    console.error('Error in getUserConversations:', error); // Log the full error
     return [];
   }
 }
@@ -290,7 +277,7 @@ export async function getConversationMessages(
       .range(offset, offset + safeLimit - 1);
     
     if (error) {
-      console.error('Error fetching messages:', error);
+      console.error('Error fetching messages:', error); // Log the full error
       return [];
     }
     
@@ -338,7 +325,7 @@ export async function getConversationMessages(
       };
     });
   } catch (error) {
-    console.error('Error in getConversationMessages:', error);
+    console.error('Error in getConversationMessages:', error); // Log the full error
     return [];
   }
 }

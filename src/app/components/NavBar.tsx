@@ -3,8 +3,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link'; 
-import { MessageSquare, Menu, X, LogIn } from 'lucide-react';
-import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+import Image from 'next/image'; 
+import { MessageSquare, Menu, X, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; 
 
 interface NavBarProps {
   simplified?: boolean;
@@ -13,7 +14,8 @@ interface NavBarProps {
 
 export function NavBar({ className = '' }: NavBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user } = useUser();
+  const { user, isLoading, signInWithGoogle, signOut } = useAuth(); 
+  // console.log(user)
 
   const closeMenu = () => setIsMobileMenuOpen(false); 
 
@@ -34,25 +36,43 @@ export function NavBar({ className = '' }: NavBarProps) {
           </div>
           
           {/* Right Content */}
-          <div className="flex items-center gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 shadow-md">
-                  <LogIn size={20} />
-                  <span className="hidden sm:inline">Sign in</span>
+          <div className="flex items-center gap-4"> 
+            {isLoading ? (
+              <div className="animate-pulse h-8 w-20 bg-gray-300 rounded-full"></div> 
+            ) : user ? (
+              <div className="flex items-center gap-3">
+                {user.user_metadata?.picture ? (
+                  <Image 
+                    src={user.user_metadata.picture} 
+                    alt="User Avatar" 
+                    width={32} 
+                    height={32} 
+                    className="rounded-full" 
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white">
+                    <UserIcon size={18} />
+                  </div>
+                )}
+                <span className="text-sm text-slate-600 hidden sm:inline">{user.user_metadata?.full_name || user.email}</span>
+                <button 
+                  onClick={signOut}
+                  className="bg-gray-100 hover:bg-gray-200 text-slate-700 px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm"
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                  <span className="hidden sm:inline">Sign out</span>
                 </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <p className="text-sm text-slate-500">{user?.firstName}</p>
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-30 h-30"
-                  }
-                }}
-              />
-            </SignedIn>
+              </div>
+            ) : (
+              <button 
+                onClick={signInWithGoogle}
+                className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 shadow-md"
+              >
+                <LogIn size={18} />
+                <span className="hidden sm:inline">Sign in with Google</span>
+              </button>
+            )}
           </div>
           
           {/* Mobile Menu Button - Only show if not simplified */}
@@ -86,14 +106,25 @@ export function NavBar({ className = '' }: NavBarProps) {
               My Videos
             </Link>
             
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="w-full text-left flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-teal-600 hover:text-teal-700 hover:bg-slate-50 transition-colors">
-                  <LogIn size={20} className="mr-3"/>
-                  Sign in
+            {!isLoading && (
+              user ? (
+                <button 
+                  onClick={() => { signOut(); closeMenu(); }}
+                  className="w-full text-left flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-slate-700 hover:text-red-600 hover:bg-slate-50 transition-colors"
+                >
+                  <LogOut size={20} className="mr-3"/>
+                  Sign out
                 </button>
-              </SignInButton>
-            </SignedOut>
+              ) : (
+                <button 
+                  onClick={() => { signInWithGoogle(); closeMenu(); }}
+                  className="w-full text-left flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-teal-600 hover:text-teal-700 hover:bg-slate-50 transition-colors"
+                >
+                  <LogIn size={20} className="mr-3"/>
+                  Sign in with Google
+                </button>
+              )
+            )}
           </div>
         </div>
       )}

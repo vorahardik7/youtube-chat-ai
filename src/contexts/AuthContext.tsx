@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       // Redirect is now handled by the onAuthStateChange listener
       // No need to explicitly push here anymore, but you could if the listener approach fails
-      // setIsLoading(false); // Listener will set loading to false
+      setIsLoading(false); // Listener will set loading to false
     }
   }, [supabase]);
 

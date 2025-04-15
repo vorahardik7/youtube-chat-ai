@@ -65,11 +65,29 @@ export function ChatMessage({ user, children, isAi, timestamp }: ChatMessageProp
 // --- Skeleton Component ---
 export function ChatMessageSkeleton() {
   return (
-    <div className="flex gap-4 mb-6 animate-pulse">
-      <div className="w-10 h-10 rounded-full bg-slate-200 shadow-sm"></div>
-      <div className="flex-1">
-        {/* <div className="h-4 bg-slate-200 rounded-full w-28 mb-3"></div> */}
-        <div className="h-24 bg-slate-100 rounded-lg w-[90%] shadow-sm border border-slate-200"></div>
+    <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 max-w-[90%] md:max-w-[75%] flex-row">
+        {/* Avatar */}
+        <div className="flex-shrink-0 mt-1">
+          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
+            <Bot size={20} className="text-white" />
+          </div>
+        </div>
+        {/* Message Bubble */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+            <span className="font-semibold text-sm text-blue-700">AI Assistant</span>
+          </div>
+          <div className="p-4 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-sm">
+            <div className="flex items-center">
+              <div className="typing-animation">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link'; 
 import Image from 'next/image'; 
-import { MessageSquare, Menu, X, LogIn, LogOut, User as UserIcon, Youtube } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, User as UserIcon, Youtube } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext'; 
 
 interface NavBarProps {

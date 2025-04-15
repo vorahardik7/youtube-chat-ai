@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MessageSquare, AlertTriangle, Clock, Send, Sparkles, ChevronDown, Youtube } from 'lucide-react';
+import { AlertTriangle, Clock, Send, Sparkles, ChevronDown } from 'lucide-react';
 import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
 import { LoadingSpinner } from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
@@ -238,10 +238,10 @@ export function ChatWindow({
         className="flex-1 overflow-y-auto p-4 md:p-6 bg-white scrollbar-thin"
       >
         <div className="flex flex-col space-y-6 max-w-4xl mx-auto">
+          {/* Only show initial loading skeleton when there are no messages */}
           {isLoading && messages.length === 0 && (
             <div className="px-2">
               <ChatMessageSkeleton />
-              {/* <ChatMessageSkeleton /> */}
             </div>
           )}
           
@@ -296,19 +296,27 @@ export function ChatWindow({
             >
               {message.isStreaming ? (
                 <div className="flex flex-col gap-2">
-                  {message.text && renderMessageText(message.text)}
-                  <div className="flex items-center gap-2 mt-1">
-                    <LoadingSpinner size="small" color="slate" />
-                    <span className="text-xs text-slate-500">AI is typing...</span>
-                  </div>
+                  {message.text ? (
+                    <div className="streaming-text">{renderMessageText(message.text)}</div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="typing-animation">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                      <span className="text-xs text-slate-500">AI is typing...</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 renderMessageText(message.text)
               )}
             </ChatMessage>
           ))}
-          {isAiThinking && (
-            <div className="opacity-90">
+          {/* Only show AI thinking skeleton when there are no streaming messages */}
+          {isAiThinking && !isLoading && !messages.some(msg => msg.isStreaming) && (
+            <div className="opacity-100">
               <ChatMessageSkeleton />
             </div>
           )}

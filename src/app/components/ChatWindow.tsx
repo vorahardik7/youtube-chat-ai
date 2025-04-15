@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MessageSquare, AlertTriangle, Clock, Send, Sparkles, ChevronDown } from 'lucide-react';
+import { MessageSquare, AlertTriangle, Clock, Send, Sparkles, ChevronDown, Youtube } from 'lucide-react';
 import { ChatMessage, ChatMessageSkeleton } from './ChatMessage';
 import { LoadingSpinner } from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
@@ -36,7 +36,6 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState('');
-  // We'll use this state later for typing indicators
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -51,7 +50,6 @@ export function ChatWindow({
     
     onSendMessage(trimmedMessage);
     setNewMessage('');
-    // We'll implement typing indicators in a future update
   };
 
   const renderMessageText = (text: string) => {
@@ -222,20 +220,14 @@ export function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full border-l border-slate-200 overflow-hidden bg-slate-50">
+    <div className="flex flex-col h-full border-l border-slate-200 overflow-hidden bg-white">
       {/* Chat Header */}
       <div className="p-4 md:p-5 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between shadow-sm">
         <div>
-          <h2 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-r from-teal-400 to-teal-600 flex items-center justify-center">
-              <MessageSquare size={14} className="text-white" />
-            </div>
-            <span>AI Chat Assistant</span>
-          </h2>
           <p className="text-sm text-slate-500 mt-1.5">Ask questions or reference specific moments with [MM:SS] timestamps</p>
         </div>
         <div className="text-xs font-medium text-slate-600 flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
-          <Clock size={12} className="text-teal-600" />
+          <Clock size={12} className="text-blue-600" />
           <span>{playerReady ? formatTime(currentTimestamp) : '--:--'}</span>
         </div>
       </div>
@@ -243,36 +235,36 @@ export function ChatWindow({
       {/* Messages Area - Flexible height with scrolling */}
       <div 
         ref={chatContainerRef} 
-        className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-b from-slate-50 to-white scrollbar-thin"
+        className="flex-1 overflow-y-auto p-4 md:p-6 bg-white scrollbar-thin"
       >
-        <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
+        <div className="flex flex-col space-y-6 max-w-4xl mx-auto">
           {isLoading && messages.length === 0 && (
             <div className="px-2">
               <ChatMessageSkeleton />
-              <ChatMessageSkeleton />
+              {/* <ChatMessageSkeleton /> */}
             </div>
           )}
           
           {!isLoading && messages.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-              <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center mb-5 shadow-sm">
-                <Sparkles size={28} className="text-teal-500" />
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-5 shadow-sm">
+                <Sparkles size={28} className="text-blue-500" />
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-3">Start a Conversation</h3>
               <p className="text-slate-600 max-w-md">Ask any question about this video and get intelligent responses based on the content.</p>
               <div className="mt-6 flex flex-col gap-3 w-full max-w-md">
                 <button 
                   onClick={() => onSendMessage("What are the main points covered in this video?")}
-                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors text-left flex items-center shadow-sm"
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium transition-colors text-left flex items-center shadow-sm"
                 >
-                  <ChevronDown size={16} className="mr-2 text-teal-500" />
+                  <ChevronDown size={16} className="mr-2 text-blue-500" />
                   What are the main points covered in this video?
                 </button>
                 <button 
                   onClick={() => onSendMessage("Can you summarize this video in 3 bullet points?")}
-                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors text-left flex items-center shadow-sm"
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium transition-colors text-left flex items-center shadow-sm"
                 >
-                  <ChevronDown size={16} className="mr-2 text-teal-500" />
+                  <ChevronDown size={16} className="mr-2 text-blue-500" />
                   Can you summarize this video in 3 bullet points?
                 </button>
               </div>
@@ -280,7 +272,7 @@ export function ChatWindow({
           )}
           
           {!isLoading && error && messages.length === 0 && !videoDetails && (
-            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-2xl shadow-sm border border-red-100">
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-6 bg-white rounded-xl shadow-sm border border-red-100">
               <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5 shadow-sm">
                 <AlertTriangle size={28} className="text-red-500" />
               </div>
@@ -333,8 +325,8 @@ export function ChatWindow({
               placeholder={isAiThinking ? "AI is generating a response..." : "Ask a question about the video..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              disabled={isLoading || !playerReady || isAiThinking} // Disable during AI thinking
-              className="w-full rounded-full border border-slate-300 px-5 py-3 pr-12 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed shadow-sm"
+              disabled={isLoading || !playerReady || isAiThinking}
+              className="w-full rounded-lg border border-slate-300 px-5 py-3 pr-12 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed shadow-sm"
               aria-label="Chat message input"
             />
             {/* Insert Timestamp Button */}
@@ -343,7 +335,7 @@ export function ChatWindow({
               title="Insert Current Timestamp"
               onClick={() => setNewMessage(prev => `${prev} [${formatTime(currentTimestamp)}]`)}
               disabled={isLoading || !playerReady || isAiThinking}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-full disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
               aria-label="Insert current video time"
             >
               <Clock size={18} />
@@ -352,7 +344,7 @@ export function ChatWindow({
           <button
             type="submit"
             disabled={!newMessage.trim() || isLoading || !playerReady || isAiThinking}
-            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white py-3 px-5 rounded-full font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md"
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-5 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md"
             aria-label="Send message"
           >
             {isAiThinking ? (
@@ -371,4 +363,4 @@ export function ChatWindow({
       </div>
     </div>
   );
-} 
+}

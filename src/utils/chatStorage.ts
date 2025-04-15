@@ -39,7 +39,7 @@ export async function saveConversation(userId: string, videoId: string, videoTit
         .select();
       
       if (updateError) {
-        console.error('Error updating conversation:', updateError); // Log the full error
+        console.error('Error updating conversation:', updateError);
         throw updateError;
       }
       
@@ -85,7 +85,7 @@ export async function deleteConversation(conversationId: string): Promise<boolea
   }
 }
 
-const MAX_CONTENT_SIZE = 1024 * 8; // 8KB limit for message content
+const MAX_CONTENT_SIZE = 1024 * 8; 
 
 export async function saveMessage(conversationId: string, message: Message): Promise<boolean> {
   try {
